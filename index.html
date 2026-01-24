@@ -146,7 +146,7 @@
             lang: "Sprache", theme: "Design", cycle: "Zyklus", renew: "Neuer Zyklus",
             pkgInfo: "Fortschritt", totalSessions: "Lektionen Gesamt", cycleNum: "Zyklus",
             save: "Starten", active: "Aktiv", date: "Datum", progress: "Fortschritt",
-            history: "Historie", noHistory: "Keine Historie", delLog: "Löschen und wiederherstellen?",
+            history: "Historie", noHistory: "Keine Historie", delLog: "Löschen and wiederherstellen?",
             searchLogs: "Einträge nach Name suchen...", done: "Fertig", confirm: "Bestätigen",
             yes: "Löschen", no: "Abbrechen"
           }
@@ -171,11 +171,11 @@
         const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, t, isDark }) => {
           if (!isOpen) return null;
           return e('div', { className: 'fixed inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-            e('div', { className: `w-full max-w-sm p-8 border rounded-[3rem] shadow-2xl confirm-dialog-enter ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
+            e('div', { className: `w-full max-sm p-8 border rounded-[3rem] shadow-2xl confirm-dialog-enter ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
               e('h3', { className: 'text-2xl font-black uppercase mb-4 text-center' }, title),
               e('p', { className: 'text-slate-500 text-center font-medium mb-8' }, message),
               e('div', { className: 'flex flex-col gap-3' }, [
-                e('button', { onClick: onConfirm, className: 'w-full py-5 bg-rose-500 text-white rounded-2xl font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all' }, t.yes),
+                e('button', { onClick: onConfirm, className: 'w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-indigo-500/20 active:scale-95 transition-all' }, t.yes),
                 e('button', { onClick: onCancel, className: `w-full py-5 rounded-2xl font-black uppercase active:scale-95 transition-all ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}` }, t.no)
               ])
             ])
@@ -189,30 +189,34 @@
 
           useEffect(() => {
             const canvas = canvasRef.current;
-            const updateCanvasResolution = () => {
+            const initCanvas = () => {
               const dpr = window.devicePixelRatio || 1;
               const rect = canvas.getBoundingClientRect();
               canvas.width = rect.width * dpr;
               canvas.height = rect.height * dpr;
+              
               const ctx = canvas.getContext('2d');
-              ctx.lineWidth = 4 * dpr; // Scale line width by dpr
               ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.lineWidth = 4 * dpr;
               ctx.strokeStyle = '#6366f1';
             };
 
-            // Small delay to ensure modal animation doesn't mess up getBoundingClientRect
-            const timer = setTimeout(updateCanvasResolution, 100);
-            window.addEventListener('resize', updateCanvasResolution);
+            // Delay initialization slightly to ensure modal animation has finalized positioning
+            const timer = setTimeout(initCanvas, 150);
+            window.addEventListener('resize', initCanvas);
             return () => {
               clearTimeout(timer);
-              window.removeEventListener('resize', updateCanvasResolution);
+              window.removeEventListener('resize', initCanvas);
             };
           }, []);
 
+          // Bulletproof coordinate mapping
           const getPos = (ev) => {
             const canvas = canvasRef.current;
+            if (!canvas) return { x: 0, y: 0 };
+            
             const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
             
             let clientX, clientY;
             if (ev.touches && ev.touches[0]) {
@@ -223,9 +227,7 @@
                 clientY = ev.clientY;
             }
 
-            // WE CALCULATE COORDINATES RELATIVE TO RENDER BUFFER
-            // (ClientX - RectLeft) gives CSS pixels. 
-            // Multiplying by (canvas.width / rect.width) gives precise buffer coordinates.
+            // Calculate ratios to map CSS pixels to internal Buffer pixels
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
 
@@ -266,7 +268,7 @@
                 onTouchStart: start, 
                 onTouchMove: move, 
                 onTouchEnd: stop,
-                className: 'w-full h-full block'
+                className: 'w-full h-full block touch-none'
               }),
               e('div', { className: `absolute top-6 right-8 text-[9px] font-black uppercase tracking-widest pointer-events-none select-none ${isDark ? 'opacity-20' : 'opacity-40 text-slate-400'}` }, t.verify)
             ]),
@@ -276,7 +278,7 @@
                 canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
               }, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.reset),
               e('button', { onClick: onCancel, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.cancel),
-              e('button', { onClick: () => onSave(canvasRef.current.toDataURL()), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl shadow-indigo-500/30' }, t.sign)
+              e('button', { onClick: () => onSave(canvasRef.current.toDataURL()), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl shadow-indigo-500/30 active:scale-95' }, t.sign)
             ])
           ]);
         };
