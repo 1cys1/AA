@@ -53,6 +53,8 @@
         
         button { cursor: pointer; border: none; outline: none; }
         .confirm-dialog-enter { animation: fadeIn 0.2s ease-out; }
+        
+        canvas { touch-action: none; cursor: crosshair; }
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
@@ -188,26 +190,52 @@
           useEffect(() => {
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
-            ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = '#6366f1';
+            
+            // Fixed scaling logic for high DPI and different screen sizes
+            const updateCanvasScale = () => {
+                const rect = canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#6366f1';
+            };
+
+            updateCanvasScale();
+            window.addEventListener('resize', updateCanvasScale);
+            return () => window.removeEventListener('resize', updateCanvasScale);
           }, []);
 
           const getPos = (ev) => {
-            const rect = canvasRef.current.getBoundingClientRect();
-            const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-            const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            const canvas = canvasRef.current;
+            const rect = canvas.getBoundingClientRect();
+            
+            // Get raw viewport coordinates
+            let clientX, clientY;
+            if (ev.touches && ev.touches[0]) {
+                clientX = ev.touches[0].clientX;
+                clientY = ev.touches[0].clientY;
+            } else {
+                clientX = ev.clientX;
+                clientY = ev.clientY;
+            }
+
+            // Calculate exact position relative to canvas box
+            // We do NOT multiply by dpr here because the canvas context is ALREADY scaled by dpr
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
           };
 
           const start = (ev) => {
             if (ev.cancelable) ev.preventDefault();
             const { x, y } = getPos(ev);
             const ctx = canvasRef.current.getContext('2d');
-            ctx.beginPath(); ctx.moveTo(x, y);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
             setIsDrawing(true);
           };
 
@@ -216,23 +244,34 @@
             if (ev.cancelable) ev.preventDefault();
             const { x, y } = getPos(ev);
             const ctx = canvasRef.current.getContext('2d');
-            ctx.lineTo(x, y); ctx.stroke();
+            ctx.lineTo(x, y);
+            ctx.stroke();
           };
+
+          const stop = () => setIsDrawing(false);
 
           return e('div', { className: 'space-y-6' }, [
             e('div', { className: `relative h-72 border-2 rounded-[2.5rem] overflow-hidden ${isDark ? 'border-white/10 bg-black/40' : 'border-slate-200 bg-white shadow-inner'}` }, [
               e('canvas', {
                 ref: canvasRef,
-                onMouseDown: start, onMouseMove: move, onMouseUp: () => setIsDrawing(false),
-                onTouchStart: start, onTouchMove: move, onTouchEnd: () => setIsDrawing(false),
-                className: 'w-full h-full'
+                onMouseDown: start, 
+                onMouseMove: move, 
+                onMouseUp: stop,
+                onMouseOut: stop,
+                onTouchStart: start, 
+                onTouchMove: move, 
+                onTouchEnd: stop,
+                className: 'w-full h-full block'
               }),
-              e('div', { className: `absolute top-6 right-8 text-[9px] font-black uppercase tracking-widest ${isDark ? 'opacity-20' : 'opacity-40 text-slate-400'}` }, t.verify)
+              e('div', { className: `absolute top-6 right-8 text-[9px] font-black uppercase tracking-widest pointer-events-none ${isDark ? 'opacity-20' : 'opacity-40 text-slate-400'}` }, t.verify)
             ]),
             e('div', { className: 'flex gap-4' }, [
-              e('button', { onClick: () => canvasRef.current.getContext('2d').clearRect(0,0,999,999), className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.reset),
+              e('button', { onClick: () => {
+                const canvas = canvasRef.current;
+                canvas.getContext('2d').clearRect(0,0, canvas.width, canvas.height);
+              }, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.reset),
               e('button', { onClick: onCancel, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.cancel),
-              e('button', { onClick: () => onSave(canvasRef.current.toDataURL()), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl' }, t.sign)
+              e('button', { onClick: () => onSave(canvasRef.current.toDataURL()), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl shadow-indigo-500/30' }, t.sign)
             ])
           ]);
         };
@@ -306,6 +345,7 @@
           }), [trainees, logs]);
 
           return e('div', { className: 'flex h-screen flex-col lg:flex-row overflow-hidden' }, [
+            // Sidebar (Desktop)
             e('nav', { className: `hidden lg:flex w-80 flex-col gap-10 p-10 border-r ${isDark ? 'border-white/5' : 'border-slate-200 shadow-xl'}` }, [
               e('div', { className: 'flex items-center gap-4' }, [
                 e('div', { className: 'p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20' }, e(Icon, { name: 'Activity', className: 'w-7 h-7 text-white' })),
@@ -329,6 +369,7 @@
               ])
             ]),
 
+            // Header (Mobile)
             e('header', { className: `lg:hidden mobile-header-pad flex justify-between items-center px-6 border-b z-50 sticky top-0 ${isDark ? 'bg-slate-950/95 border-white/5' : 'bg-white/95 border-slate-200'} backdrop-blur-xl shadow-lg` }, [
               e('h1', { className: 'font-black italic uppercase text-2xl tracking-tight' }, 'FitCheck'),
               e('div', { className: 'flex gap-1 items-center' }, [
@@ -337,6 +378,7 @@
               ])
             ]),
 
+            // Main Content
             e('main', { className: 'flex-1 overflow-y-auto p-6 lg:p-14 pb-32' }, [
               e('div', { className: 'max-w-5xl mx-auto space-y-12 animate-fade-in' }, [
                 view === 'dash' && e('div', { className: 'space-y-12' }, [
