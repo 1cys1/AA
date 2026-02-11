@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=FC&background=6366f1&color=fff&size=180&bold=true">
     
-    <!-- Load UMD versions to bypass CSP/Eval restrictions -->
+    <!-- External Dependencies (UMD Versions for CSP Compliance) -->
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
@@ -39,7 +39,7 @@
         
         .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 10px; }
         
         .log-table {
           width: 100%;
@@ -52,13 +52,13 @@
           font-weight: 900;
           text-transform: uppercase;
           letter-spacing: 0.1em;
-          padding: 16px 8px;
+          padding: 18px 8px;
           text-align: center;
-          border-bottom: 2px solid rgba(128, 128, 128, 0.1);
+          border-bottom: 2px solid rgba(128, 128, 128, 0.2);
         }
 
         .log-table td { 
-          border: 1px solid rgba(128, 128, 128, 0.08); 
+          border: 1px solid rgba(128, 128, 128, 0.1); 
           padding: 12px 6px;
           vertical-align: middle;
           word-wrap: break-word;
@@ -68,27 +68,26 @@
 
         .session-input {
             background: rgba(128, 128, 128, 0.1);
-            border-radius: 8px;
-            padding: 12px 8px;
+            border-radius: 12px;
+            padding: 14px 10px;
             width: 100%;
             outline: none;
-            border: 1px solid transparent;
-            font-size: 13px;
-            font-weight: 700;
+            border: 2px solid transparent;
+            font-size: 14px;
+            font-weight: 800;
             appearance: none;
             -webkit-appearance: none;
         }
 
-        .dark-mode .session-input { color: white; border-color: rgba(255, 255, 255, 0.1); }
+        .dark-mode .session-input { color: white; border-color: rgba(255, 255, 255, 0.1); background: rgba(255,255,255,0.05); }
         .light-mode .session-input { color: #0f172a; border-color: rgba(0, 0, 0, 0.1); background: #f8fafc; }
 
-        .dark-mode .log-table th { background: #1e293b; color: #94a3b8; }
-        .light-mode .log-table th { background: #f1f5f9; color: #475569; }
+        .dark-mode .log-table th { background: #1e293b; color: #f8fafc; }
+        .light-mode .log-table th { background: #f1f5f9; color: #1e293b; }
 
         canvas { touch-action: none; }
         .active-scale:active { transform: scale(0.97); transition: transform 0.05s; }
         
-        /* Fix for mobile keyboard pushing content */
         @media screen and (max-height: 450px) {
           header { display: none; }
           nav { display: none; }
@@ -98,7 +97,8 @@
 </head>
 <body class="dark-mode">
     <div id="root"></div>
-    <script src="index.tsx" type="module"></script>
+    <!-- Use standard .js extension to satisfy GitHub Pages MIME requirements -->
+    <script src="index.js"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
