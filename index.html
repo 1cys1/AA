@@ -55,6 +55,7 @@
         .confirm-dialog-enter { animation: fadeIn 0.2s ease-out; }
         
         canvas { touch-action: none; cursor: crosshair; }
+        input[type="date"] { appearance: none; -webkit-appearance: none; }
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
@@ -67,7 +68,7 @@
 
         const translations = {
           en: {
-            langName: "English", traineeLabel: "Trainee",
+            langName: "English", traineeLabel: "Trainee", selectDate: "Attendance Date",
             dash: "Dashboard", att: "Attendance", manage: "Trainees", logs: "Records",
             welcome: "Welcome, Coach", total: "Total Students", today: "Today's Lessons",
             search: "Search students...", checkIn: "Check-In", add: "New Student",
@@ -81,7 +82,7 @@
             yes: "Delete", no: "Cancel"
           },
           zh_cn: {
-            langName: "简体中文", traineeLabel: "学员姓名",
+            langName: "简体中文", traineeLabel: "学员姓名", selectDate: "签到日期",
             dash: "仪表盘", att: "签到", manage: "学员", logs: "记录",
             welcome: "欢迎回来，教练", total: "学员总数", today: "今日已签",
             search: "搜索姓名...", checkIn: "签到核销", add: "添加学员",
@@ -95,7 +96,7 @@
             yes: "确认删除", no: "取消"
           },
           zh_tw: {
-            langName: "繁體中文", traineeLabel: "學員姓名",
+            langName: "繁體中文", traineeLabel: "學員姓名", selectDate: "簽到日期",
             dash: "儀表盤", att: "簽到", manage: "學員", logs: "記錄",
             welcome: "歡迎回來，教練", total: "學員總數", today: "今日已簽",
             search: "搜索姓名...", checkIn: "簽到核銷", add: "添加學員",
@@ -109,7 +110,7 @@
             yes: "確認刪除", no: "取消"
           },
           es: {
-            langName: "Español", traineeLabel: "Alumno",
+            langName: "Español", traineeLabel: "Alumno", selectDate: "Fecha de Asistencia",
             dash: "Panel", att: "Asistencia", manage: "Alumnos", logs: "Registros",
             welcome: "Bienvenido, Coach", total: "Total Alumnos", today: "Hoy",
             search: "Buscar...", checkIn: "Check-In", add: "Nuevo Alumno",
@@ -117,13 +118,13 @@
             verify: "Firma de Verificación", del: "Eliminar", confirmDel: "¿Borrar alumno?",
             lang: "Idioma", theme: "Tema", cycle: "Ciclo", renew: "Nuevo Ciclo",
             pkgInfo: "Progreso", totalSessions: "Total Lecciones", cycleNum: "Ciclo",
-            save: "Empezar", active: "Active", date: "Fecha", progress: "Progreso",
+            save: "Empezar", active: "Activo", date: "Fecha", progress: "Progreso",
             history: "Historial", noHistory: "Sin historial", delLog: "¿Eliminar y restaurar saldo?",
             searchLogs: "Buscar registros por nombre...", done: "Listo", confirm: "Confirmar",
             yes: "Eliminar", no: "Cancelar"
           },
           fr: {
-            langName: "Français", traineeLabel: "Élève",
+            langName: "Français", traineeLabel: "Élève", selectDate: "Date de Présence",
             dash: "Tableau", att: "Présence", manage: "Élèves", logs: "Détails",
             welcome: "Bienvenue, Coach", total: "Total Élèves", today: "Aujourd'hui",
             search: "Rechercher...", checkIn: "Check-In", add: "Nouvel Élève",
@@ -137,7 +138,7 @@
             yes: "Supprimer", no: "Annuler"
           },
           de: {
-            langName: "Deutsch", traineeLabel: "Schüler",
+            langName: "Deutsch", traineeLabel: "Schüler", selectDate: "Datum",
             dash: "Dashboard", att: "Anwesenheit", manage: "Schüler", logs: "Protokoll",
             welcome: "Willkommen, Coach", total: "Gesamt Schüler", today: "Heute",
             search: "Suchen...", checkIn: "Check-In", add: "Neuer Schüler",
@@ -185,6 +186,7 @@
         const SignaturePad = ({ onSave, onCancel, t, theme }) => {
           const canvasRef = useRef(null);
           const [isDrawing, setIsDrawing] = useState(false);
+          const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
           const isDark = theme === 'dark';
 
           useEffect(() => {
@@ -192,6 +194,8 @@
             const initCanvas = () => {
               const dpr = window.devicePixelRatio || 1;
               const rect = canvas.getBoundingClientRect();
+              
+              // Internal resolution
               canvas.width = rect.width * dpr;
               canvas.height = rect.height * dpr;
               
@@ -200,9 +204,11 @@
               ctx.lineJoin = 'round';
               ctx.lineWidth = 4 * dpr;
               ctx.strokeStyle = '#6366f1';
+              
+              // Scaling the context to use CSS pixels for drawing logic
+              ctx.scale(dpr, dpr);
             };
 
-            // Delay initialization slightly to ensure modal animation has finalized positioning
             const timer = setTimeout(initCanvas, 150);
             window.addEventListener('resize', initCanvas);
             return () => {
@@ -211,7 +217,6 @@
             };
           }, []);
 
-          // Bulletproof coordinate mapping
           const getPos = (ev) => {
             const canvas = canvasRef.current;
             if (!canvas) return { x: 0, y: 0 };
@@ -227,13 +232,12 @@
                 clientY = ev.clientY;
             }
 
-            // Calculate ratios to map CSS pixels to internal Buffer pixels
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-
+            // High compatibility coordinate mapping:
+            // Subtracting rect position from the client window position correctly maps to CSS coordinates
+            // inside the canvas, which is already ctx.scale(dpr)d.
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: clientX - rect.left,
+                y: clientY - rect.top
             };
           };
 
@@ -258,7 +262,16 @@
           const stop = () => setIsDrawing(false);
 
           return e('div', { className: 'space-y-6' }, [
-            e('div', { className: `relative h-72 border-2 rounded-[2.5rem] overflow-hidden ${isDark ? 'border-white/10 bg-black/40' : 'border-slate-200 bg-white shadow-inner'}` }, [
+            e('div', {}, [
+                e('label', { className: 'text-[10px] font-black uppercase text-slate-500 mb-2 block tracking-widest' }, t.selectDate),
+                e('input', { 
+                    type: 'date', 
+                    value: selectedDate,
+                    onChange: (ev) => setSelectedDate(ev.target.value),
+                    className: `w-full p-4 rounded-xl font-bold border outline-none ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-slate-50 border-slate-100 text-slate-900'}`
+                })
+            ]),
+            e('div', { className: `relative h-64 border-2 rounded-[2.5rem] overflow-hidden ${isDark ? 'border-white/10 bg-black/40' : 'border-slate-200 bg-white shadow-inner'}` }, [
               e('canvas', {
                 ref: canvasRef,
                 onMouseDown: start, 
@@ -275,10 +288,11 @@
             e('div', { className: 'flex gap-4' }, [
               e('button', { onClick: () => {
                 const canvas = canvasRef.current;
-                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                const dpr = window.devicePixelRatio || 1;
+                canvas.getContext('2d').clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
               }, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.reset),
               e('button', { onClick: onCancel, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.cancel),
-              e('button', { onClick: () => onSave(canvasRef.current.toDataURL()), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl shadow-indigo-500/30 active:scale-95' }, t.sign)
+              e('button', { onClick: () => onSave(canvasRef.current.toDataURL(), selectedDate), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl shadow-indigo-500/30 active:scale-95' }, t.sign)
             ])
           ]);
         };
@@ -487,7 +501,7 @@
                             ])),
                             e('tbody', {}, filteredLogs.length > 0 ? filteredLogs.map(l => e('tr', { key: l.id, className: `border-t ${isDark ? 'border-white/5' : 'border-slate-100'} hover:bg-indigo-500/5 transition-colors` }, [
                                 e('td', { className: 'p-6 text-sm font-black' }, l.name),
-                                e('td', { className: 'p-6 text-xs text-slate-500 font-medium' }, new Date(l.date).toLocaleString()),
+                                e('td', { className: 'p-6 text-xs text-slate-500 font-medium' }, new Date(l.date).toLocaleDateString()),
                                 e('td', { className: 'p-6 text-xs text-indigo-500 font-black' }, `${t.cycleNum} ${l.cycle} | ${l.progress}`),
                                 e('td', { className: 'p-6 text-center' }, e('img', { src: l.sig, className: `h-10 mx-auto opacity-80 ${isDark ? 'invert' : ''}` })),
                                 e('td', { className: 'p-6 text-center' }, e('button', { 
@@ -510,12 +524,12 @@
             ]),
 
             activeUser && e('div', { className: 'fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-              e('div', { className: `w-full max-w-2xl p-10 lg:p-14 border rounded-[4rem] shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-                e('h3', { className: 'text-4xl font-black italic uppercase mb-2' }, activeUser.name),
-                e('p', { className: 'text-[11px] text-slate-500 uppercase font-black tracking-widest mb-10' }, `${t.cycleNum} ${activeUser.cycle || 1} • ${activeUser.done + 1} / ${activeUser.total}`),
-                e(SignaturePad, { t, theme, onCancel: () => setActiveUser(null), onSave: (sig) => {
+              e('div', { className: `w-full max-w-2xl p-8 lg:p-12 border rounded-[4rem] shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
+                e('h3', { className: 'text-3xl font-black italic uppercase mb-1' }, activeUser.name),
+                e('p', { className: 'text-[11px] text-slate-500 uppercase font-black tracking-widest mb-6' }, `${t.cycleNum} ${activeUser.cycle || 1} • ${activeUser.done + 1} / ${activeUser.total}`),
+                e(SignaturePad, { t, theme, onCancel: () => setActiveUser(null), onSave: (sig, attendanceDate) => {
                   const logId = Date.now();
-                  const log = { id: logId, traineeId: activeUser.id, name: activeUser.name, date: new Date().toISOString(), sig, cycle: activeUser.cycle || 1, progress: `${activeUser.done + 1}/${activeUser.total}` };
+                  const log = { id: logId, traineeId: activeUser.id, name: activeUser.name, date: attendanceDate, sig, cycle: activeUser.cycle || 1, progress: `${activeUser.done + 1}/${activeUser.total}` };
                   setLogs(prev => [log, ...prev]);
                   setTrainees(prev => prev.map(x => String(x.id) === String(activeUser.id) ? { ...x, done: x.done + 1 } : x));
                   setActiveUser(null);
