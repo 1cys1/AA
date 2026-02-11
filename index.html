@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>FitCheck Pro | No-Eval Edition</title>
+    <title>FitCheck Pro | Coach Suite</title>
     <meta name="theme-color" content="#020617">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -41,7 +41,6 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
         
-        /* Enforce Fixed Width Tables */
         .log-table {
           width: 100%;
           table-layout: fixed;
@@ -49,17 +48,18 @@
         }
 
         .log-table th {
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 900;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
-          padding: 12px 4px;
-          background: rgba(128, 128, 128, 0.05);
+          letter-spacing: 0.1em;
+          padding: 16px 8px;
+          text-align: center;
+          border-bottom: 2px solid rgba(128, 128, 128, 0.1);
         }
 
         .log-table td { 
           border: 1px solid rgba(128, 128, 128, 0.08); 
-          padding: 8px 4px;
+          padding: 12px 6px;
           vertical-align: middle;
           word-wrap: break-word;
           overflow: hidden;
@@ -69,11 +69,11 @@
         .session-input {
             background: rgba(128, 128, 128, 0.1);
             border-radius: 8px;
-            padding: 10px 6px;
+            padding: 12px 8px;
             width: 100%;
             outline: none;
             border: 1px solid transparent;
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             appearance: none;
             -webkit-appearance: none;
@@ -82,21 +82,22 @@
         .dark-mode .session-input { color: white; border-color: rgba(255, 255, 255, 0.1); }
         .light-mode .session-input { color: #0f172a; border-color: rgba(0, 0, 0, 0.1); background: #f8fafc; }
 
+        .dark-mode .log-table th { background: #1e293b; color: #94a3b8; }
+        .light-mode .log-table th { background: #f1f5f9; color: #475569; }
+
         canvas { touch-action: none; }
         .active-scale:active { transform: scale(0.97); transition: transform 0.05s; }
-
-        /* Ensure time picker is accessible on mobile */
-        input[type="time"]::-webkit-calendar-picker-indicator,
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          filter: invert(0.5);
-          cursor: pointer;
+        
+        /* Fix for mobile keyboard pushing content */
+        @media screen and (max-height: 450px) {
+          header { display: none; }
+          nav { display: none; }
         }
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="dark-mode">
     <div id="root"></div>
-    <!-- Note: index.tsx content below is loaded as a script to handle UMD context -->
     <script src="index.tsx" type="module"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
