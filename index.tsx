@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createRoot } from 'react-dom/client';
+// Direct Execution Edition - No Eval / No JSX
+// Standardized for iPad / GitHub Pages compatibility
+const { useState, useEffect, useRef, useMemo } = (window as any).React;
+const e = (window as any).React.createElement;
 
 const translations = {
   en: {
@@ -48,7 +50,7 @@ const translations = {
     save: "開啟新期", active: "活躍", date: "日期", progress: "進度",
     history: "歷史記錄", noHistory: "暫無歷史", delLog: "確定刪除此記錄？",
     searchLogs: "搜尋歷史...", done: "完成", confirm: "確認操作",
-    yes: "確認刪除", no: "取消", pending: "草稿", completed: "已完成",
+    yes: "確認刪除", no: "取消", pending: "學員草稿", completed: "已完成",
     allHistory: "歷史存檔", selectToView: "選擇學員查看記錄",
     completeAt: "簽到完成時間", selectMember: "選擇學員", saveChange: "確認", clear: "清除時間",
     sessionInfo: "課程安排", placeholder: "尚未排課"
@@ -62,7 +64,7 @@ const translations = {
     trainerSign: "Firma Entrenador", memberSign: "Firma Miembro", del: "Eliminar", confirmDel: "¿Eliminar registro?",
     lang: "Idioma", theme: "Tema", cycle: "Ciclo", renew: "Nuevo Ciclo",
     pkgInfo: "Progreso", totalSessions: "Total Sesiones", cycleNum: "Ciclo",
-    save: "Iniciar Ciclo", active: "Activo", date: "Fecha", progress: "Progreso",
+    save: "Iniciar Ciclo", active: "Active", date: "Fecha", progress: "Progreso",
     history: "Historial", noHistory: "Sin historial", delLog: "¿Borrar registro?",
     searchLogs: "Buscar...", done: "Listo", confirm: "Confirmar",
     yes: "Eliminar", no: "Cancelar", pending: "Borrador", completed: "Completo",
@@ -108,32 +110,30 @@ const translations = {
 
 const db = {
   KEYS: { TR: 'fit_tr_v21', LG: 'fit_lg_v21', TM: 'fit_theme_v21', LN: 'fit_lang_v21' },
-  get: (k: string) => {
+  get: (k) => {
     try {
       const val = localStorage.getItem(k);
       if (!val) return k === db.KEYS.LN ? 'en' : k === db.KEYS.TM ? 'dark' : [];
       return JSON.parse(val);
-    } catch {
-      return k === db.KEYS.LN ? 'en' : k === db.KEYS.TM ? 'dark' : [];
-    }
+    } catch { return k === db.KEYS.LN ? 'en' : k === db.KEYS.TM ? 'dark' : []; }
   },
-  set: (k: string, v: any) => localStorage.setItem(k, JSON.stringify(v))
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
 };
 
-const Icon = ({ name, className }: { name: string, className?: string }) => {
-  const iconData = (window as any).lucide.icons[name.charAt(0).toLowerCase() + name.slice(1)] || (window as any).lucide.icons[name];
+const Icon = ({ name, className }) => {
+  const lucide = (window as any).lucide;
+  const iconData = lucide.icons[name.charAt(0).toLowerCase() + name.slice(1)] || lucide.icons[name];
   if (!iconData) return null;
   const [tag, attrs, children] = iconData;
-  return React.createElement(tag, { ...attrs, className: className || 'w-6 h-6', stroke: 'currentColor' }, 
-    children.map((child: any, i: number) => React.createElement(child[0], { ...child[1], key: i }))
+  return e(tag, { ...attrs, className: className || 'w-6 h-6', stroke: 'currentColor' }, 
+    children.map((child, i) => e(child[0], { ...child[1], key: i }))
   );
 };
 
-const formatSessionDisplay = (dateStr: string, timeStr: string) => {
+const formatSessionDisplay = (dateStr, timeStr) => {
     if (!dateStr) return null;
     const [y, m, d] = dateStr.split('-');
-    const dateFormatted = `${m}/${d}/${y}`;
-    
+    const dateFormatted = `${d}/${m}/${y}`; // DD/MM/YYYY
     let timeFormatted = "";
     if (timeStr) {
         const [h, min] = timeStr.split(':');
@@ -145,107 +145,73 @@ const formatSessionDisplay = (dateStr: string, timeStr: string) => {
     return `${dateFormatted} • ${timeFormatted || '--:--'}`;
 };
 
-const SignatureModal = ({ isOpen, title, onSave, onCancel, t, isDark }: any) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const SignatureModal = ({ isOpen, title, onSave, onCancel, t, isDark }) => {
+  const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  const getPos = (ev: any) => {
-    const canvas = canvasRef.current!;
+  const getPos = (ev) => {
+    const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const clientX = (ev.touches ? ev.touches[0].clientX : ev.clientX);
     const clientY = (ev.touches ? ev.touches[0].clientY : ev.clientY);
-    return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height)
-    };
+    return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
   };
 
-  const start = (ev: any) => {
-    if (ev.cancelable) ev.preventDefault();
-    const { x, y } = getPos(ev);
-    const ctx = canvasRef.current!.getContext('2d')!;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const move = (ev: any) => {
-    if (!isDrawing) return;
-    if (ev.cancelable) ev.preventDefault();
-    const { x, y } = getPos(ev);
-    const ctx = canvasRef.current!.getContext('2d')!;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
+  const start = (ev) => { if (ev.cancelable) ev.preventDefault(); const { x, y } = getPos(ev); const ctx = canvasRef.current.getContext('2d'); ctx.beginPath(); ctx.moveTo(x, y); setIsDrawing(true); };
+  const move = (ev) => { if (!isDrawing) return; if (ev.cancelable) ev.preventDefault(); const { x, y } = getPos(ev); const ctx = canvasRef.current.getContext('2d'); ctx.lineTo(x, y); ctx.stroke(); };
   const stop = () => setIsDrawing(false);
 
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
-      const canvas = canvasRef.current!;
+      const canvas = canvasRef.current;
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
-      const ctx = canvas.getContext('2d')!;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = 3 * dpr;
-      ctx.strokeStyle = isDark ? '#818cf8' : '#4f46e5';
+      const ctx = canvas.getContext('2d');
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3 * dpr; ctx.strokeStyle = isDark ? '#818cf8' : '#4f46e5';
     }, 150);
     return () => clearTimeout(timer);
   }, [isOpen, isDark]);
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[500] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6">
-      <div className={`w-full max-w-xl p-8 border rounded-[3rem] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200 shadow-2xl'}`}>
-        <h3 className={`text-2xl font-black uppercase mb-6 text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h3>
-        <div className={`h-64 border-2 rounded-[2rem] overflow-hidden mb-6 ${isDark ? 'bg-black/40 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-          <canvas
-            ref={canvasRef}
-            onMouseDown={start} onMouseMove={move} onMouseUp={stop} onMouseOut={stop}
-            onTouchStart={start} onTouchMove={move} onTouchEnd={stop}
-            className="w-full h-full block touch-none"
-          />
-        </div>
-        <div className="flex gap-4">
-          <button onClick={() => {
-             const c = canvasRef.current!;
-             c.getContext('2d')!.clearRect(0, 0, c.width, c.height);
-          }} className={`flex-1 py-4 rounded-xl font-bold uppercase transition-colors ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>{t.reset}</button>
-          <button onClick={onCancel} className={`flex-1 py-4 rounded-xl font-bold uppercase transition-colors ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>{t.cancel}</button>
-          <button onClick={() => onSave(canvasRef.current!.toDataURL())} className="flex-[2] py-4 bg-indigo-600 text-white rounded-xl font-bold uppercase shadow-xl hover:bg-indigo-500 active:scale-95">{t.sign}</button>
-        </div>
-      </div>
-    </div>
+  return e('div', { className: "fixed inset-0 z-[500] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6" },
+    e('div', { className: `w-full max-w-xl p-8 border rounded-[3rem] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200 shadow-2xl'}` },
+      e('h3', { className: `text-2xl font-black uppercase mb-6 text-center ${isDark ? 'text-white' : 'text-slate-900'}` }, title),
+      e('div', { className: `h-64 border-2 rounded-[2rem] overflow-hidden mb-6 ${isDark ? 'bg-black/40 border-white/5' : 'bg-slate-50 border-slate-100'}` },
+        e('canvas', { ref: canvasRef, onMouseDown: start, onMouseMove: move, onMouseUp: stop, onMouseOut: stop, onTouchStart: start, onTouchMove: move, onTouchEnd: stop, className: "w-full h-full block touch-none" })
+      ),
+      e('div', { className: "flex gap-4" },
+        e('button', { onClick: () => { const c = canvasRef.current; c.getContext('2d').clearRect(0, 0, c.width, c.height); }, className: `flex-1 py-4 rounded-xl font-bold uppercase transition-all active:scale-95 ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}` }, t.reset),
+        e('button', { onClick: onCancel, className: `flex-1 py-4 rounded-xl font-bold uppercase transition-all active:scale-95 ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}` }, t.cancel),
+        e('button', { onClick: () => onSave(canvasRef.current.toDataURL()), className: "flex-[2] py-4 bg-indigo-600 text-white rounded-xl font-bold uppercase shadow-xl transition-all active:scale-95" }, t.sign)
+      )
+    )
   );
 };
 
 const App = () => {
-  const [lang, setLang] = useState<string>(() => db.get(db.KEYS.LN));
-  const [theme, setTheme] = useState<string>(() => db.get(db.KEYS.TM));
+  const [lang, setLang] = useState(() => db.get(db.KEYS.LN));
+  const [theme, setTheme] = useState(() => db.get(db.KEYS.TM));
   const [view, setView] = useState('dash');
-  const [trainees, setTrainees] = useState<any[]>(() => db.get(db.KEYS.TR));
-  const [logs, setLogs] = useState<any[]>(() => db.get(db.KEYS.LG));
+  const [trainees, setTrainees] = useState(() => db.get(db.KEYS.TR));
+  const [logs, setLogs] = useState(() => db.get(db.KEYS.LG));
   const [search, setSearch] = useState('');
   
-  const [activeUser, setActiveUser] = useState<any>(null);
-  const [historyUser, setHistoryUser] = useState<any>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeUser, setActiveUser] = useState(null);
+  const [historyUser, setHistoryUser] = useState(null);
   
-  const [sigModal, setSigModal] = useState<any>({ isOpen: false, type: null, rowIndex: null });
+  const [sigModal, setSigModal] = useState({ isOpen: false, type: null, rowIndex: null });
   const [isAdding, setIsAdding] = useState(false);
-  const [isRenewing, setIsRenewing] = useState<any>(null);
+  const [isRenewing, setIsRenewing] = useState(null);
   const [isLangOpen, setIsLangOpen] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null });
+  const [editSession, setEditSession] = useState(null);
 
-  const [editSession, setEditSession] = useState<{row: number, date: string, time: string} | null>(null);
-
-  const t = (translations as any)[lang] || translations['en'];
+  const t = translations[lang] || translations['en'];
   const isDark = theme === 'dark';
 
   useEffect(() => {
@@ -272,27 +238,20 @@ const App = () => {
     });
   }, [activeUser, logs]);
 
-  const updateLogRowBatch = (traineeId: number, rowNum: number, updates: Record<string, any>) => {
+  const updateLogRowBatch = (traineeId, rowNum, updates) => {
     setLogs(prevLogs => {
       const currentCycle = activeUser.cycle;
       const logId = `${traineeId}-${rowNum}-${currentCycle}`;
       const existingIdx = prevLogs.findIndex(l => l.id === logId);
-      
       let newLogs = [...prevLogs];
       let newLog;
-
       if (existingIdx !== -1) {
          newLog = { ...prevLogs[existingIdx], ...updates };
          newLogs[existingIdx] = newLog;
       } else {
-         newLog = { 
-           id: logId, traineeId, cycle: currentCycle, row: rowNum, name: activeUser.name,
-           date: '', time: '', trainerSig: null, memberSig: null, completedAt: '', completed: false,
-           ...updates
-         };
+         newLog = { id: logId, traineeId, cycle: currentCycle, row: rowNum, name: activeUser.name, date: '', time: '', trainerSig: null, memberSig: null, completedAt: '', completed: false, ...updates };
          newLogs.push(newLog);
       }
-
       const isNowComplete = !!(newLog.trainerSig && newLog.memberSig && newLog.date && newLog.time);
       if (isNowComplete && !newLog.completed) {
         const now = new Date();
@@ -310,397 +269,230 @@ const App = () => {
     }
   }, [logs]);
 
-  const handleApplySession = (row: number) => {
-    if (!editSession) return;
-    updateLogRowBatch(activeUser.id, row, { date: editSession.date, time: editSession.time });
-    setEditSession(null);
-  };
+  const handleApplySession = (row) => { if (!editSession) return; updateLogRowBatch(activeUser.id, row, { date: editSession.date, time: editSession.time }); setEditSession(null); };
+  
+  return e('div', { className: `flex flex-col lg:flex-row h-screen w-screen overflow-hidden ${isDark ? 'text-white' : 'text-slate-900'}` },
+    // SIDEBAR
+    e('nav', { className: `hidden lg:flex w-64 flex-col gap-6 p-6 border-r shrink-0 ${isDark ? 'border-white/5 bg-slate-900/50' : 'border-slate-200 bg-white'}` },
+      e('div', { className: "flex items-center gap-3" }, e('div', { className: "p-2 bg-indigo-600 rounded-xl shadow-lg" }, e(Icon, { name: "Activity", className: "text-white w-5 h-5" })), e('h1', { className: "text-lg font-black uppercase tracking-tighter" }, "FitCheck Pro")),
+      e('div', { className: "flex flex-col gap-2 flex-1 overflow-y-auto" },
+        [['dash', 'LayoutDashboard', t.dash], ['att', 'Table', t.att], ['manage', 'Users2', t.manage], ['logs', 'ClipboardList', t.logs]].map(([id, icon, label]) => 
+          e('button', { key: id, onClick: () => { setView(id); setActiveUser(null); setHistoryUser(null); }, className: `flex items-center gap-4 px-4 py-3 rounded-xl transition-all ${view === id ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/10' : 'text-slate-500 hover:bg-white/5'}` }, e(Icon, { name: icon, className: "w-4 h-4" }), e('span', { className: "font-black uppercase text-[10px] tracking-widest" }, label))
+        )
+      ),
+      e('div', { className: "mt-auto flex flex-col gap-2" },
+        e('button', { onClick: () => setTheme(isDark ? 'light' : 'dark'), className: "flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase transition-all active:scale-95" }, t.theme, e(Icon, { name: isDark ? "Moon" : "Sun", className: "w-3.5 h-3.5 opacity-50" })),
+        e('button', { onClick: () => setIsLangOpen(true), className: "flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase transition-all active:scale-95" }, t.lang, e('span', { className: "opacity-50" }, t.langName))
+      )
+    ),
+    // MOBILE HEADER
+    e('header', { className: `lg:hidden mobile-header-pad flex justify-between items-center px-4 border-b shrink-0 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-white border-slate-200'} backdrop-blur-xl` },
+      e('h1', { className: "font-black uppercase text-lg" }, "FitCheck"),
+      e('div', { className: "flex gap-2" },
+        e('button', { onClick: () => setTheme(isDark ? 'light' : 'dark'), className: "p-2" }, e(Icon, { name: isDark ? "Moon" : "Sun", className: "w-5 h-5 opacity-60" })),
+        e('button', { onClick: () => setIsLangOpen(true), className: "p-2 text-[10px] font-black uppercase" }, lang.toUpperCase())
+      )
+    ),
+    // MAIN CONTENT
+    e('main', { className: "flex-1 overflow-hidden flex flex-col p-3 lg:p-6" },
+      e('div', { className: "w-full flex-1 flex flex-col overflow-hidden" },
+        view === 'dash' && e('div', { className: "space-y-4 overflow-y-auto pr-1 custom-scroll" },
+          e('h2', { className: "text-2xl lg:text-4xl font-black mb-1" }, t.welcome),
+          e('p', { className: "text-slate-500 font-medium uppercase tracking-widest text-[9px] mb-4" }, "Performance Dashboard"),
+          e('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-3" },
+            [[t.total, stats.total, 'text-indigo-500'], [t.today, stats.today, 'text-emerald-500'], [t.active, stats.active, 'text-slate-500']].map(([lbl, val, cls]) => 
+              e('div', { key: lbl, className: `p-5 rounded-[1.5rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` }, e('p', { className: "text-[9px] font-black uppercase text-slate-500 tracking-widest" }, lbl), e('p', { className: `text-3xl font-black mt-1 ${cls}` }, val))
+            )
+          )
+        ),
+        view === 'att' && !activeUser && e('div', { className: "flex flex-col flex-1 overflow-hidden" },
+          e('div', { className: "flex justify-between items-center mb-4" }, e('h2', { className: "text-xl font-black uppercase italic" }, t.att), e('input', { placeholder: t.search, onChange: ev => setSearch(ev.target.value), className: `p-2.5 rounded-lg border outline-none text-xs w-48 ${isDark ? 'border-white/10 bg-white/5 text-white' : 'border-slate-200 bg-white'}` })),
+          e('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto custom-scroll pb-24 lg:pb-0" },
+            trainees.filter(u => u.name.toLowerCase().includes(search.toLowerCase())).map(u => 
+              e('div', { key: u.id, className: `p-4 rounded-2xl border flex justify-between items-center ${isDark ? 'border-white/5 bg-white/5' : 'border-slate-100 bg-white shadow-sm'}` }, 
+                e('div', null, e('h3', { className: "font-black" }, u.name), e('p', { className: "text-[9px] font-black opacity-40 uppercase" }, `Cycle ${u.cycle} • ${u.done}/${u.total}`)),
+                e('button', { onClick: () => setActiveUser(u), className: "w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg transition-all active:scale-90" }, e(Icon, { name: "FileText", className: "w-4 h-4 text-white" }))
+              )
+            )
+          )
+        ),
+        view === 'att' && activeUser && e('div', { className: "flex flex-col flex-1 overflow-hidden" },
+          e('button', { onClick: () => setActiveUser(null), className: "text-indigo-500 font-black uppercase text-[8px] mb-2 flex items-center gap-1" }, e(Icon, { name: "ArrowLeft", className: "w-2 h-2" }), "Back"),
+          e('h2', { className: "text-xl font-black uppercase italic mb-3" }, activeUser.name),
+          e('div', { className: `flex-1 overflow-hidden border rounded-2xl flex flex-col ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-200 shadow-xl'}` },
+            e('div', { className: "flex-1 overflow-auto custom-scroll" },
+              e('table', { className: "log-table" },
+                e('thead', { className: `sticky top-0 z-10 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}` }, 
+                  e('tr', { className: "text-slate-500" }, 
+                    e('th', { style: { width: '8%' } }, "#"), 
+                    e('th', { style: { width: '42%' } }, t.sessionInfo), 
+                    e('th', { style: { width: '18%' } }, t.trainerSign), 
+                    e('th', { style: { width: '18%' } }, t.memberSign), 
+                    e('th', { style: { width: '14%' } }, "Status")
+                  )
+                ),
+                e('tbody', null, userSheetData.map(row => 
+                  e('tr', { key: row.row, className: `border-t ${isDark ? 'border-white/5' : 'border-slate-100'}` },
+                    e('td', { className: "text-center text-[10px] font-black opacity-30" }, row.row),
+                    e('td', { className: "p-2 relative" }, 
+                      editSession?.row === row.row ? e('div', { className: `flex flex-col gap-1.5 p-1.5 rounded-lg ${isDark ? 'bg-indigo-950/20' : 'bg-indigo-50/50'}` },
+                        e('div', { className: "grid grid-cols-1 gap-1" },
+                          e('input', { type: "date", value: editSession.date, onChange: ev => setEditSession({ ...editSession, date: (ev.target as HTMLInputElement).value }), className: "session-input" }),
+                          e('input', { type: "time", value: editSession.time, onChange: ev => setEditSession({ ...editSession, time: (ev.target as HTMLInputElement).value }), className: "session-input" })
+                        ),
+                        e('div', { className: "flex gap-1" },
+                          e('button', { onClick: () => handleApplySession(row.row), className: "flex-1 py-2 bg-indigo-600 text-white rounded font-black text-[9px] uppercase shadow-md active:scale-90" }, t.saveChange),
+                          e('button', { onClick: () => setEditSession(null), className: `flex-1 py-2 rounded font-black text-[9px] uppercase ${isDark ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-700'}` }, t.cancel)
+                        )
+                      ) : e('button', { onClick: () => setEditSession({ row: row.row, date: row.date || new Date().toISOString().split('T')[0], time: row.time || "10:00" }), className: `w-full text-left p-3 rounded text-[10px] font-black overflow-hidden truncate transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-50 hover:bg-slate-100'}` }, row.date ? formatSessionDisplay(row.date, row.time) : t.placeholder)
+                    ),
+                    e('td', { className: "text-center cursor-pointer", onClick: () => setSigModal({ isOpen: true, type: 'trainerSig', rowIndex: row.row }) }, row.trainerSig ? e('img', { src: row.trainerSig, className: `h-8 mx-auto object-contain ${isDark ? 'invert opacity-90' : ''}` }) : e(Icon, { name: "PenTool", className: "w-4 h-4 mx-auto opacity-10" })),
+                    e('td', { className: "text-center cursor-pointer", onClick: () => setSigModal({ isOpen: true, type: 'memberSig', rowIndex: row.row }) }, row.memberSig ? e('img', { src: row.memberSig, className: `h-8 mx-auto object-contain ${isDark ? 'invert opacity-90' : ''}` }) : e(Icon, { name: "Pen", className: "w-4 h-4 mx-auto opacity-10" })),
+                    e('td', { className: "text-center px-1" }, e('span', { className: `px-1 py-0.5 rounded-full text-[7px] font-black uppercase truncate block ${row.completed ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}` }, row.completed ? t.completed : t.pending))
+                  )
+                ))
+              )
+            )
+          )
+        ),
+        view === 'manage' && e('div', { className: "flex flex-col flex-1 overflow-hidden" },
+          e('div', { className: "flex justify-between items-center mb-4" }, e('h2', { className: "text-xl font-black uppercase italic" }, t.manage), e('button', { onClick: () => setIsAdding(true), className: "px-4 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95" }, t.add)),
+          e('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto custom-scroll pb-24 lg:pb-0" },
+            trainees.map(tr => e('div', { key: tr.id, className: `p-5 rounded-3xl border flex justify-between items-center ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` },
+              e('div', null, e('h3', { className: "font-black" }, tr.name), e('p', { className: "text-[9px] font-black opacity-40 uppercase" }, `Cycle ${tr.cycle} • ${tr.total} Sessions`)),
+              e('div', { className: "flex gap-2" },
+                e('button', { onClick: () => setIsRenewing(tr), className: "p-2 border border-indigo-500/20 text-indigo-500 rounded-lg active:scale-90" }, e(Icon, { name: "RotateCcw", className: "w-4 h-4" })),
+                e('button', { onClick: () => setConfirmModal({ isOpen: true, type: 'trainee', targetId: tr.id }), className: "p-2 bg-rose-500/10 text-rose-500 rounded-lg active:scale-90" }, e(Icon, { name: "Trash2", className: "w-4 h-4" }))
+              )
+            ))
+          )
+        ),
+        view === 'logs' && e('div', { className: "flex flex-col flex-1 overflow-hidden" },
+          e('div', { className: "flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4" }, 
+            e('h2', { className: "text-xl font-black uppercase italic" }, t.logs), 
+            e('select', { value: historyUser?.id || "", onChange: ev => setHistoryUser(trainees.find(tr => tr.id == (ev.target as HTMLSelectElement).value)), className: `p-2.5 rounded-lg border text-[10px] font-black uppercase w-48 outline-none ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200'}` }, e('option', { value: "" }, t.selectMember), trainees.map(tr => e('option', { key: tr.id, value: tr.id }, tr.name)))
+          ),
+          e('div', { className: `flex-1 overflow-hidden border rounded-3xl flex flex-col ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-200 shadow-xl'}` },
+            historyUser ? e('div', { className: "flex-1 overflow-auto custom-scroll p-4" }, 
+              [...new Set(logs.filter(l => l.traineeId === historyUser.id && l.completed).map(l => l.cycle))].sort((a: any, b: any) => (b as number) - (a as number)).map(cycleNum => 
+                e('div', { key: cycleNum, className: "mb-8" },
+                  e('div', { className: "flex items-center gap-2 mb-3" }, e('span', { className: "px-3 py-1 bg-indigo-600 text-white rounded-full text-[8px] font-black uppercase shadow-md" }, `Cycle ${cycleNum}`), e('div', { className: `flex-1 h-px ${isDark ? 'bg-white/5' : 'bg-slate-100'}` })),
+                  e('div', { className: `rounded-xl border overflow-hidden ${isDark ? 'border-white/5' : 'border-slate-100'}` },
+                    e('table', { className: "log-table" },
+                      e('thead', { className: isDark ? 'bg-slate-800' : 'bg-slate-50' }, 
+                        e('tr', { className: "text-slate-500" }, 
+                          e('th', { style: { width: '8%' } }, "#"), 
+                          e('th', { style: { width: '32%' } }, e('div', null, e('p', null, t.sessionInfo), e('p', { className: "text-[8px] opacity-40 font-black mt-0.5" }, "DD/MM/YYYY"))), 
+                          e('th', { style: { width: '18%' } }, t.trainerSign), 
+                          e('th', { style: { width: '18%' } }, t.memberSign), 
+                          e('th', { style: { width: '16%' } }, "Completed"), 
+                          e('th', { style: { width: '8%' } }, "Del")
+                        )
+                      ),
+                      e('tbody', null, logs.filter(l => l.traineeId === historyUser.id && l.completed && l.cycle === cycleNum).sort((a: any, b: any) => (a as any).row - (b as any).row).map(l => 
+                        e('tr', { key: l.id, className: `border-t ${isDark ? 'border-white/5' : 'border-slate-100'}` },
+                          e('td', { className: "text-center opacity-30 text-[10px] font-black" }, l.row),
+                          e('td', { className: "p-3 font-black text-[10px] truncate" }, formatSessionDisplay(l.date, l.time)),
+                          e('td', { className: "text-center" }, l.trainerSig ? e('img', { src: l.trainerSig, className: `h-8 w-auto mx-auto object-contain ${isDark ? 'invert' : ''}` }) : "--"),
+                          e('td', { className: "text-center" }, l.memberSig ? e('img', { src: l.memberSig, className: `h-8 w-auto mx-auto object-contain ${isDark ? 'invert' : ''}` }) : "--"),
+                          e('td', { className: "text-right text-[8px] font-bold text-emerald-500 truncate px-2" }, l.completedAt),
+                          e('td', { className: "text-center" }, e('button', { onClick: () => setConfirmModal({ isOpen: true, type: 'log', targetId: l.id }), className: "text-rose-500 p-2 bg-rose-500/5 rounded hover:bg-rose-500/10 active:scale-90" }, e(Icon, { name: "Trash2", className: "w-4 h-4" })))
+                        )
+                      ))
+                    )
+                  )
+                )
+              )
+            ) : e('div', { className: "flex-1 flex flex-col items-center justify-center opacity-10 gap-3" }, e(Icon, { name: "Users", className: "w-16 h-16" }), e('p', { className: "font-black uppercase tracking-widest text-xs" }, t.selectToView))
+          )
+        )
+      )
+    ),
+    // MOBILE NAV
+    e('nav', { className: `lg:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around backdrop-blur-3xl pb-[env(safe-area-inset-bottom)] z-[400] ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-white/80 border-slate-200'}` },
+      [['dash', 'LayoutDashboard'], ['att', 'Table'], ['manage', 'Users2'], ['logs', 'ClipboardList']].map(([id, icon], i) => 
+        e('button', { key: id, onClick: () => { setView(id); setActiveUser(null); setHistoryUser(null); }, className: `flex flex-col items-center gap-0.5 flex-1 transition-all ${view === id ? 'text-indigo-500' : 'text-slate-400'}` }, e(Icon, { name: icon, className: "w-5 h-5" }), e('span', { className: "text-[8px] font-black uppercase tracking-widest" }, t[id]))
+      )
+    ),
+    // MODALS
+    e(SignatureModal, { isOpen: sigModal.isOpen, title: sigModal.type === 'trainerSig' ? t.trainerSign : t.memberSign, isDark: isDark, t: t, onCancel: () => setSigModal({ isOpen: false, type: null, rowIndex: null }), onSave: (sig) => { updateLogRowBatch(activeUser.id, sigModal.rowIndex, { [sigModal.type]: sig }); setSigModal({ isOpen: false, type: null, rowIndex: null }); } }),
+    
+    // ADD MEMBER MODAL
+    isAdding && e('div', { className: "fixed inset-0 z-[600] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" },
+      e('div', { className: `w-full max-w-xs p-8 rounded-[2rem] border ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}` },
+        e('h3', { className: "text-xl font-black uppercase mb-6 text-center italic" }, t.add),
+        e('div', { className: "space-y-4" },
+          e('div', null, e('label', { className: "text-[8px] font-black uppercase text-slate-500 mb-1 block" }, t.traineeLabel), e('input', { id: "in-name", placeholder: "Name", className: `w-full p-4 rounded-xl border text-sm font-black outline-none ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}` })),
+          e('div', null, e('label', { className: "text-[8px] font-black uppercase text-slate-500 mb-1 block" }, t.lessons), e('input', { id: "in-total", type: "number", defaultValue: "15", className: `w-full p-4 rounded-xl border text-sm font-black outline-none ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}` })),
+          e('div', { className: "flex flex-col gap-2 pt-2" },
+            e('button', { onClick: () => {
+              const n = (document.getElementById('in-name') as HTMLInputElement).value;
+              const tot = parseInt((document.getElementById('in-total') as HTMLInputElement).value) || 15;
+              if (!n) return;
+              setTrainees(prev => [...prev, { id: Date.now(), name: n, cycle: 1, total: tot, done: 0 }]);
+              setIsAdding(false);
+            }, className: "w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-lg" }, t.add),
+            e('button', { onClick: () => setIsAdding(false), className: "w-full py-2 text-[9px] font-black uppercase opacity-40" }, t.cancel)
+          )
+        )
+      )
+    ),
 
-  const handleClearSession = (row: number) => {
-    updateLogRowBatch(activeUser.id, row, { date: '', time: '' });
-    setEditSession(null);
-  };
+    // RENEW MODAL
+    isRenewing && e('div', { className: "fixed inset-0 z-[600] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" },
+      e('div', { className: `w-full max-w-xs p-8 rounded-[2rem] border ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}` },
+        e('h3', { className: "text-xl font-black uppercase mb-1 text-center italic" }, t.renew),
+        e('p', { className: "text-center text-[8px] font-bold text-slate-500 mb-6" }, `Cycle ${isRenewing.cycle + 1}`),
+        e('input', { id: "re-total", type: "number", defaultValue: isRenewing.total, className: `w-full p-4 rounded-xl border text-lg font-black text-center mb-6 outline-none ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}` }),
+        e('div', { className: "flex flex-col gap-2" },
+          e('button', { onClick: () => {
+            const tot = parseInt((document.getElementById('re-total') as HTMLInputElement).value) || 15;
+            setTrainees(prev => prev.map(u => u.id === isRenewing.id ? { ...u, cycle: u.cycle + 1, total: tot, done: 0 } : u));
+            setIsRenewing(null);
+          }, className: "w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-lg" }, t.save),
+          e('button', { onClick: () => setIsRenewing(null), className: "w-full py-2 text-[9px] font-black uppercase opacity-40" }, t.cancel)
+        )
+      )
+    ),
 
-  return (
-    <div className={`flex flex-col lg:flex-row h-screen w-screen overflow-hidden ${isDark ? 'text-white' : 'text-slate-900'}`}>
-      {/* SIDEBAR */}
-      <nav className={`hidden lg:flex w-64 flex-col gap-6 p-6 border-r shrink-0 ${isDark ? 'border-white/5 bg-slate-900/50' : 'border-slate-200 bg-white'}`}>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20"><Icon name="Activity" className="text-white w-6 h-6" /></div>
-          <h1 className="text-lg font-black uppercase tracking-tight">FitCheck Pro</h1>
-        </div>
-        <div className="flex flex-col gap-2 overflow-y-auto">
-          {[
-            ['dash', 'LayoutDashboard', t.dash],
-            ['att', 'Table', t.att],
-            ['manage', 'Users2', t.manage],
-            ['logs', 'ClipboardList', t.logs]
-          ].map(([id, icon, label]) => (
-            <button key={id} onClick={() => { setView(id); setActiveUser(null); setHistoryUser(null); setIsDropdownOpen(false); }} className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all ${view === id ? 'bg-indigo-600 text-white shadow-xl' : (isDark ? 'text-slate-500 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-              <Icon name={icon} className="w-4 h-4" />
-              <span className="font-black uppercase text-[10px] tracking-widest">{label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="mt-auto flex flex-col gap-2">
-           <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={`flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase ${isDark ? 'border-white/5 bg-white/5' : 'border-slate-100 bg-slate-50 text-slate-900'}`}>
-              {t.theme} <Icon name={isDark ? 'Moon' : 'Sun'} className="w-3.5 h-3.5 opacity-50" />
-           </button>
-           <button onClick={() => setIsLangOpen(true)} className={`flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase ${isDark ? 'border-white/5 bg-white/5' : 'border-slate-100 bg-slate-50 text-slate-900'}`}>
-              {t.lang} <span className="opacity-50 truncate ml-1">{t.langName}</span>
-           </button>
-        </div>
-      </nav>
+    // CONFIRM MODAL
+    confirmModal.isOpen && e('div', { className: "fixed inset-0 z-[800] bg-black/95 flex items-center justify-center p-4 backdrop-blur-2xl" },
+      e('div', { className: `w-full max-w-xs p-8 rounded-[2.5rem] border text-center ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200 shadow-2xl'}` },
+        e('h3', { className: "text-xl font-black uppercase mb-3 italic" }, t.confirm),
+        e('p', { className: "text-[11px] text-slate-400 mb-8 font-medium leading-relaxed" }, confirmModal.type === 'trainee' ? t.confirmDel : t.delLog),
+        e('div', { className: "flex flex-col gap-2" },
+          e('button', { onClick: () => {
+            if (confirmModal.type === 'trainee') {
+              setTrainees(p => p.filter(x => x.id !== confirmModal.targetId));
+              setLogs(p => p.filter(x => x.traineeId !== confirmModal.targetId));
+              if (activeUser?.id === confirmModal.targetId) setActiveUser(null);
+              if (historyUser?.id === confirmModal.targetId) setHistoryUser(null);
+            } else {
+              setLogs(p => p.filter(x => x.id !== confirmModal.targetId));
+            }
+            setConfirmModal({ isOpen: false, type: null, targetId: null });
+          }, className: "w-full py-4 bg-rose-500 text-white rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-xl shadow-rose-500/10" }, t.yes),
+          e('button', { onClick: () => setConfirmModal({ isOpen: false, type: null, targetId: null }), className: `w-full py-3 rounded-xl font-black text-[9px] uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}` }, t.no)
+        )
+      )
+    ),
 
-      {/* MOBILE HEADER */}
-      <header className={`lg:hidden mobile-header-pad flex justify-between items-center px-4 border-b z-50 shrink-0 ${isDark ? 'bg-slate-950/95 border-white/5' : 'bg-white border-slate-200'} backdrop-blur-xl`}>
-        <h1 className="font-black uppercase text-lg">FitCheck</h1>
-        <div className="flex gap-1">
-          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="p-2"><Icon name={isDark ? 'Moon' : 'Sun'} className="opacity-60 w-5 h-5" /></button>
-          <button onClick={() => setIsLangOpen(true)} className="p-2 text-[10px] font-black uppercase">{lang.toUpperCase()}</button>
-        </div>
-      </header>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-hidden flex flex-col p-3 lg:p-6">
-        <div className="w-full flex-1 flex flex-col overflow-hidden animate-fade-in">
-          {view === 'dash' && (
-            <div className="space-y-4 overflow-y-auto pr-1 custom-scroll flex-1">
-              <header>
-                <h2 className="text-2xl lg:text-4xl font-black mb-1">{t.welcome}</h2>
-                <p className="text-slate-500 font-medium uppercase tracking-[0.2em] text-[9px]">Performance Dashboard</p>
-              </header>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  [t.total, stats.total, 'text-indigo-500'],
-                  [t.today, stats.today, 'text-emerald-500'],
-                  [t.active, stats.active, 'text-slate-500']
-                ].map(([label, val, cls]: any) => (
-                  <div key={label} className={`p-5 rounded-[1.5rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                    <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">{label}</p>
-                    <p className={`text-3xl font-black mt-1 ${cls}`}>{val}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {view === 'att' && !activeUser && (
-             <div className="flex flex-col flex-1 overflow-hidden space-y-3">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shrink-0">
-                   <h2 className="text-xl font-black uppercase italic">{t.att}</h2>
-                   <div className="relative w-full md:max-w-xs">
-                      <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-30" />
-                      <input placeholder={t.search} onChange={e => setSearch(e.target.value)} className={`w-full pl-9 pr-3 py-2.5 rounded-lg border outline-none text-xs ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`} />
-                   </div>
-                </div>
-                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-1 custom-scroll pb-24 lg:pb-0">
-                   {trainees.filter(u => u.name.toLowerCase().includes(search.toLowerCase())).map(u => (
-                      <div key={u.id} className={`p-4 rounded-[1.5rem] border group ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                         <div className="flex justify-between items-start mb-3">
-                            <div>
-                               <h3 className="text-base font-black truncate max-w-[150px]">{u.name}</h3>
-                               <p className="text-[8px] font-black uppercase text-slate-500 mt-0.5">C{u.cycle} • {u.done}/{u.total}</p>
-                            </div>
-                            <button onClick={() => setActiveUser(u)} className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center shadow-lg active:scale-90"><Icon name="FileText" className="w-4 h-4"/></button>
-                         </div>
-                         <div className={`w-full h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-100'}`}>
-                            <div className="h-full bg-indigo-500 transition-all duration-700" style={{ width: `${Math.min(((u.done||0)/u.total)*100, 100)}%` }} />
-                         </div>
-                      </div>
-                   ))}
-                </div>
-             </div>
-          )}
-
-          {view === 'att' && activeUser && (
-             <div className="flex flex-col flex-1 overflow-hidden space-y-3 pb-20 lg:pb-0">
-                <div className="flex justify-between items-end gap-2 shrink-0">
-                   <div className="overflow-hidden">
-                      <button onClick={() => setActiveUser(null)} className="flex items-center gap-1 text-indigo-500 font-black uppercase text-[8px] mb-0.5 hover:translate-x-[-1px]">
-                         <Icon name="ArrowLeft" className="w-2.5 h-2.5" /> Back
-                      </button>
-                      <h2 className={`text-xl font-black uppercase italic truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{activeUser.name}</h2>
-                   </div>
-                </div>
-
-                <div className={`flex-1 overflow-hidden rounded-[1.5rem] border flex flex-col ${isDark ? 'bg-slate-900 border-white/5 shadow-2xl' : 'bg-white border-slate-200 shadow-xl'}`}>
-                   <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll">
-                      <table className="w-full table-fixed border-collapse">
-                         <thead className="sticky top-0 z-10">
-                            <tr className={`${isDark ? 'bg-slate-800' : 'bg-slate-50'} text-slate-500 text-[8px] font-black uppercase tracking-widest`}>
-                               <th className="p-2 w-[8%] text-center">#</th>
-                               <th className="p-2 w-[35%] text-left">{t.sessionInfo}</th>
-                               <th className="p-2 w-[20%] text-center">{t.trainerSign}</th>
-                               <th className="p-2 w-[20%] text-center">{t.memberSign}</th>
-                               <th className="p-2 w-[17%] text-center">Status</th>
-                            </tr>
-                         </thead>
-                         <tbody>
-                            {userSheetData.map((row: any) => (
-                               <tr key={row.row} className={`border-t ${isDark ? 'border-white/5' : 'border-slate-100'} ${row.completed ? 'bg-emerald-500/5' : ''}`}>
-                                  <td className="p-1 text-center font-black opacity-30 text-[10px]">{row.row}</td>
-                                  <td className="p-2 relative overflow-visible">
-                                     <div className="flex items-center">
-                                       {editSession?.row === row.row ? (
-                                          <div className={`absolute top-0 left-0 w-64 p-3 rounded-lg border shadow-2xl z-[100] ${isDark ? 'bg-slate-800 border-white/10' : 'bg-white border-slate-200'}`}>
-                                             <div className="grid grid-cols-2 gap-2 mb-2">
-                                                <input type="date" value={editSession.date} onChange={e => setEditSession({ ...editSession, date: e.target.value })} className="session-input h-8 text-[10px]" />
-                                                <input type="time" value={editSession.time} onChange={e => setEditSession({ ...editSession, time: e.target.value })} className="session-input h-8 text-[10px]" />
-                                             </div>
-                                             <div className="flex gap-2">
-                                                <button onClick={() => handleApplySession(row.row)} className="flex-1 py-2 bg-indigo-600 text-white rounded-md font-black uppercase text-[9px] shadow active:scale-95">{t.saveChange}</button>
-                                                <button onClick={() => handleClearSession(row.row)} className="p-2 bg-rose-500/10 text-rose-500 rounded-md active:scale-95"><Icon name="Eraser" className="w-3.5 h-3.5"/></button>
-                                                <button onClick={() => setEditSession(null)} className={`p-2 rounded-md ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}><Icon name="X" className="w-3.5 h-3.5 opacity-40"/></button>
-                                             </div>
-                                          </div>
-                                       ) : (
-                                          <button onPointerDown={() => setEditSession({ row: row.row, date: row.date || new Date().toISOString().split('T')[0], time: row.time || "10:00" })} className={`w-full px-2 py-3 rounded-md border flex items-center justify-between overflow-hidden ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'} ${!row.date ? 'opacity-30' : ''}`}>
-                                             <span className="font-black text-[9px] truncate">{row.date ? formatSessionDisplay(row.date, row.time) : t.placeholder}</span>
-                                             <Icon name="ChevronRight" className="w-2.5 h-2.5 opacity-20 shrink-0" />
-                                          </button>
-                                       )}
-                                     </div>
-                                  </td>
-                                  <td className="p-1 text-center cursor-pointer" onClick={() => setSigModal({ isOpen: true, type: 'trainerSig', rowIndex: row.row })}>
-                                     {row.trainerSig ? <img src={row.trainerSig} className={`h-8 mx-auto ${isDark ? 'invert' : ''}`} /> : <Icon name="ShieldCheck" className="mx-auto opacity-5 w-5 h-5" />}
-                                  </td>
-                                  <td className="p-1 text-center cursor-pointer" onClick={() => setSigModal({ isOpen: true, type: 'memberSig', rowIndex: row.row })}>
-                                     {row.memberSig ? <img src={row.memberSig} className={`h-8 mx-auto ${isDark ? 'invert' : ''}`} /> : <Icon name="UserCheck" className="mx-auto opacity-5 w-5 h-5" />}
-                                  </td>
-                                  <td className="p-1 text-center">
-                                     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase block truncate ${row.completed ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
-                                        {row.completed ? t.completed : t.pending}
-                                     </span>
-                                  </td>
-                               </tr>
-                            ))}
-                         </tbody>
-                      </table>
-                   </div>
-                </div>
-             </div>
-          )}
-
-          {view === 'manage' && (
-             <div className="flex flex-col flex-1 overflow-hidden space-y-3">
-                <div className="flex justify-between items-center shrink-0">
-                   <h2 className="text-xl font-black uppercase italic">{t.manage}</h2>
-                   <button onClick={() => setIsAdding(true)} className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-black text-[9px] uppercase shadow active:scale-95">{t.add}</button>
-                </div>
-                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 pr-1 custom-scroll pb-24 lg:pb-0">
-                   {trainees.map(tr => (
-                      <div key={tr.id} className={`p-5 rounded-[1.5rem] border flex justify-between items-center ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                         <div>
-                            <h3 className="text-base font-black truncate max-w-[150px]">{tr.name}</h3>
-                            <p className="text-[8px] font-black uppercase text-slate-500 opacity-60 mt-0.5">Cycle {tr.cycle} • {tr.total} Sessions</p>
-                         </div>
-                         <div className="flex gap-2">
-                            <button onClick={() => setIsRenewing(tr)} className="p-2 border rounded-lg hover:bg-indigo-500/10 border-indigo-500/20 text-indigo-500"><Icon name="RotateCcw" className="w-4 h-4" /></button>
-                            <button onClick={() => setConfirmModal({ isOpen: true, type: 'trainee', targetId: tr.id })} className="p-2 bg-rose-500/10 text-rose-500 rounded-lg"><Icon name="Trash2" className="w-4 h-4" /></button>
-                         </div>
-                      </div>
-                   ))}
-                </div>
-             </div>
-          )}
-
-          {view === 'logs' && (
-             <div className="flex flex-col flex-1 overflow-hidden space-y-3 pb-20 lg:pb-0">
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shrink-0">
-                   <h2 className="text-xl font-black uppercase italic">{t.logs}</h2>
-                   <div className="relative w-full md:max-w-md">
-                      <button onPointerDown={() => setIsDropdownOpen(!isDropdownOpen)} className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border font-black text-[10px] uppercase ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
-                         <span className="truncate">{historyUser ? historyUser.name : t.selectMember}</span>
-                         <Icon name={isDropdownOpen ? "ChevronUp" : "ChevronDown"} className="w-4 h-4 opacity-30 shrink-0" />
-                      </button>
-                      {isDropdownOpen && (
-                        <div className={`absolute top-full left-0 right-0 mt-2 border rounded-xl overflow-hidden shadow-2xl max-h-[250px] overflow-y-auto animate-fade-in z-[300] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
-                           {trainees.map(tr => (
-                              <button key={tr.id} onPointerDown={() => { setHistoryUser(tr); setIsDropdownOpen(false); }} className={`w-full text-left p-3 font-black text-[10px] uppercase border-b last:border-none ${isDark ? 'border-white/5 hover:bg-indigo-600 text-white' : 'border-slate-100 hover:bg-indigo-50 text-slate-900'}`}>{tr.name}</button>
-                           ))}
-                        </div>
-                      )}
-                   </div>
-                </header>
-
-                <div className={`flex-1 overflow-hidden rounded-[1.5rem] border flex flex-col ${isDark ? 'bg-slate-900 border-white/5 shadow-2xl' : 'bg-white border-slate-200 shadow-xl'}`}>
-                   {historyUser ? (
-                      <div className="flex flex-col flex-1 overflow-hidden">
-                         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll p-3">
-                            {[...new Set(logs.filter(l => l.traineeId === historyUser.id && l.completed).map(l => l.cycle))].sort((a: any, b: any) => Number(b) - Number(a)).map(cycleNum => (
-                               <div key={cycleNum} className="mb-8 last:mb-0">
-                                  <div className="flex items-center gap-3 mb-2">
-                                     <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-[8px] font-black uppercase">Cycle {cycleNum}</span>
-                                     <div className={`flex-1 h-px ${isDark ? 'bg-white/5' : 'bg-slate-100'}`} />
-                                  </div>
-                                  <div className="rounded-xl border overflow-hidden">
-                                     <table className="w-full table-fixed border-collapse">
-                                        <thead>
-                                           <tr className={`text-[8px] font-black uppercase text-slate-500 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                              <th className="p-2 w-[8%] text-center">#</th>
-                                              <th className="p-2 w-[35%]">
-                                                 <p>{t.sessionInfo}</p>
-                                                 <p className="text-[7px] opacity-40 font-bold">(MM/DD/YYYY)</p>
-                                              </th>
-                                              <th className="p-2 w-[18%] text-center">{t.trainerSign}</th>
-                                              <th className="p-2 w-[18%] text-center">{t.memberSign}</th>
-                                              <th className="p-2 w-[21%] text-right">{t.completeAt}</th>
-                                              <th className="p-2 w-[10%] text-center">{t.del}</th>
-                                           </tr>
-                                        </thead>
-                                        <tbody>
-                                           {logs.filter(l => l.traineeId === historyUser.id && l.completed && l.cycle === cycleNum).sort((a: any, b: any) => Number(a.row) - Number(b.row)).map(l => (
-                                              <tr key={l.id} className={`border-t ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                                 <td className="p-2 text-center font-black opacity-20 text-[9px]">{l.row}</td>
-                                                 <td className="p-2 truncate font-black text-[10px]">{formatSessionDisplay(l.date, l.time)}</td>
-                                                 <td className="p-2 text-center">
-                                                    {l.trainerSig ? <img src={l.trainerSig} className={`h-8 w-auto mx-auto object-contain ${isDark ? 'invert' : ''}`} /> : <Icon name="Minus" className="opacity-10 mx-auto w-3 h-3" />}
-                                                 </td>
-                                                 <td className="p-2 text-center">
-                                                    {l.memberSig ? <img src={l.memberSig} className={`h-8 w-auto mx-auto object-contain ${isDark ? 'invert' : ''}`} /> : <Icon name="Minus" className="opacity-10 mx-auto w-3 h-3" />}
-                                                 </td>
-                                                 <td className="p-2 text-right text-[8px] font-black text-emerald-500 uppercase leading-tight truncate">
-                                                    {l.completedAt}
-                                                 </td>
-                                                 <td className="p-2 text-center">
-                                                    <button onPointerDown={() => setConfirmModal({ isOpen: true, type: 'log', targetId: l.id })} className="p-2 text-rose-500 bg-rose-500/10 rounded-md active:scale-90 transition-transform"><Icon name="Trash2" className="w-3.5 h-3.5"/></button>
-                                                 </td>
-                                              </tr>
-                                           ))}
-                                        </tbody>
-                                     </table>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      </div>
-                   ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center opacity-10 gap-3 text-center p-8 animate-pulse">
-                         <Icon name="Users" className="w-16 h-16" />
-                         <p className="font-black uppercase text-lg tracking-[0.3em]">{t.selectToView}</p>
-                      </div>
-                   )}
-                </div>
-             </div>
-          )}
-        </div>
-      </main>
-
-      {/* MOBILE NAV */}
-      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around backdrop-blur-3xl pb-[env(safe-area-inset-bottom)] z-[400] ${isDark ? 'bg-slate-950/80 border-white/5' : 'bg-white/80 border-slate-200'}`}>
-        {[
-          ['dash', 'LayoutDashboard', t.dash],
-          ['att', 'Table', t.att],
-          ['manage', 'Users2', t.manage],
-          ['logs', 'ClipboardList', t.logs]
-        ].map(([id, icon, label]) => (
-          <button key={id} onClick={() => { setView(id); setActiveUser(null); setHistoryUser(null); setIsDropdownOpen(false); }} className={`flex flex-col items-center gap-0.5 p-1 flex-1 transition-colors ${view === id ? 'text-indigo-500' : 'text-slate-400'}`}>
-            <Icon name={icon} className="w-4 h-4" />
-            <span className="text-[7px] font-black uppercase tracking-widest">{label}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* RENEW CYCLE MODAL */}
-      {isRenewing && (
-         <div className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className={`w-full max-w-xs p-6 border rounded-[2rem] ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}`}>
-               <h3 className="text-xl font-black uppercase mb-1 text-center italic">{t.renew}</h3>
-               <p className="text-center text-slate-500 text-[9px] mb-6 font-medium tracking-wide">Starting Cycle {isRenewing.cycle + 1}</p>
-               <div className="space-y-4">
-                  <input id="re-total" type="number" defaultValue={isRenewing.total} className={`w-full p-3 rounded-lg border font-black text-lg outline-none ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-slate-50 border-slate-100 text-slate-900'}`} />
-                  <div className="flex flex-col gap-1.5">
-                    <button onClick={() => {
-                       const total = parseInt((document.getElementById('re-total') as HTMLInputElement).value) || 15;
-                       setTrainees(prev => prev.map(u => u.id === isRenewing.id ? { ...u, cycle: u.cycle + 1, total, done: 0 } : u));
-                       setIsRenewing(null);
-                    }} className="w-full py-3 bg-indigo-600 text-white rounded-lg font-black uppercase text-xs active:scale-95">{t.save}</button>
-                    <button onClick={() => setIsRenewing(null)} className="w-full py-1 text-slate-500 font-bold uppercase text-[8px] tracking-widest">{t.cancel}</button>
-                  </div>
-               </div>
-            </div>
-         </div>
-      )}
-
-      {/* SIGNATURE PAD */}
-      <SignatureModal isOpen={sigModal.isOpen} title={sigModal.type === 'trainerSig' ? t.trainerSign : t.memberSign} isDark={isDark} t={t} onCancel={() => setSigModal({ isOpen: false })} onSave={(sig: string) => { updateLogRowBatch(activeUser.id, sigModal.rowIndex, { [sigModal.type]: sig }); setSigModal({ isOpen: false }); }} />
-
-      {/* ADD NEW MEMBER */}
-      {isAdding && (
-         <div className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className={`w-full max-w-xs p-6 border rounded-[2rem] ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}`}>
-               <h3 className="text-xl font-black uppercase mb-6 text-center italic">{t.add}</h3>
-               <div className="space-y-4">
-                  <div>
-                    <label className="text-[8px] font-black uppercase text-slate-500 mb-1 block tracking-widest">{t.traineeLabel}</label>
-                    <input id="in-name" placeholder="Full Name" className={`w-full p-3 rounded-lg border font-black text-xs outline-none focus:ring-1 focus:ring-indigo-500/20 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-slate-50 border-slate-100 text-slate-900'}`} />
-                  </div>
-                  <div>
-                    <label className="text-[8px] font-black uppercase text-slate-500 mb-1 block tracking-widest">{t.lessons}</label>
-                    <input id="in-total" type="number" defaultValue={15} className={`w-full p-3 rounded-lg border font-black text-xs outline-none focus:ring-1 focus:ring-indigo-500/20 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-slate-50 border-slate-100 text-slate-900'}`} />
-                  </div>
-                  <div className="pt-2 flex flex-col gap-1.5">
-                    <button onClick={() => {
-                       const name = (document.getElementById('in-name') as HTMLInputElement).value;
-                       const total = parseInt((document.getElementById('in-total') as HTMLInputElement).value) || 15;
-                       if (!name) return;
-                       setTrainees(prev => [...prev, { id: Date.now(), name, cycle: 1, total, done: 0 }]);
-                       setIsAdding(false);
-                    }} className="w-full py-3 bg-indigo-600 text-white rounded-lg font-black uppercase text-xs active:scale-95">{t.add}</button>
-                    <button onClick={() => setIsAdding(false)} className="w-full py-1 text-slate-500 font-bold uppercase text-[8px] tracking-widest">{t.cancel}</button>
-                  </div>
-               </div>
-            </div>
-         </div>
-      )}
-
-      {/* LANGUAGE OVERLAY */}
-      {isLangOpen && (
-         <div className="fixed inset-0 z-[700] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className={`w-full max-w-xs p-6 border rounded-[2rem] ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}`}>
-               <h3 className="text-lg font-black uppercase mb-4 text-center italic">{t.lang}</h3>
-               <div className="flex flex-col gap-1.5 max-h-[40vh] overflow-y-auto pr-1 custom-scroll">
-                  {Object.keys(translations).map(k => (
-                     <button key={k} onPointerDown={() => { setLang(k); setIsLangOpen(false); }} className={`w-full p-3 rounded-lg font-black text-left flex justify-between items-center transition-all text-[10px] ${lang === k ? 'bg-indigo-600 text-white shadow-lg' : (isDark ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-50 text-slate-600')}`}>
-                        {(translations as any)[k].langName}
-                        {lang === k && <Icon name="CheckCircle" className="w-3.5 h-3.5" />}
-                     </button>
-                  ))}
-               </div>
-               <button onClick={() => setIsLangOpen(false)} className="w-full py-3 text-slate-500 font-bold uppercase text-[8px] mt-2 tracking-widest">{t.cancel}</button>
-            </div>
-         </div>
-      )}
-
-      {/* GLOBAL CONFIRMATION OVERLAY */}
-      {confirmModal.isOpen && (
-         <div className="fixed inset-0 z-[800] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
-            <div className={`w-full max-w-xs p-8 border rounded-[2rem] text-center ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}`}>
-               <h3 className="text-xl font-black uppercase mb-3 italic">{t.confirm}</h3>
-               <p className="text-slate-400 mb-8 font-medium text-xs leading-relaxed">
-                 {confirmModal.type === 'trainee' ? t.confirmDel : t.delLog}
-               </p>
-               <div className="flex flex-col gap-2">
-                  <button onPointerDown={() => {
-                     if (confirmModal.type === 'trainee') {
-                        setTrainees(prev => prev.filter(x => x.id !== confirmModal.targetId));
-                        setLogs(prev => prev.filter(x => x.traineeId !== confirmModal.targetId));
-                        if (activeUser?.id === confirmModal.targetId) setActiveUser(null);
-                        if (historyUser?.id === confirmModal.targetId) setHistoryUser(null);
-                     } else {
-                        setLogs(prev => prev.filter(x => x.id !== confirmModal.targetId));
-                     }
-                     setConfirmModal({ isOpen: false });
-                  }} className="w-full py-4 bg-rose-500 text-white rounded-lg font-black uppercase text-xs active:scale-95">{t.yes}</button>
-                  <button onClick={() => setConfirmModal({ isOpen: false })} className={`w-full py-3 rounded-lg font-black uppercase text-[9px] tracking-widest ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>{t.no}</button>
-               </div>
-            </div>
-         </div>
-      )}
-    </div>
+    // LANG SELECT
+    isLangOpen && e('div', { className: "fixed inset-0 z-[700] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md" },
+      e('div', { className: `w-full max-w-xs p-6 border rounded-[2rem] ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl'}` },
+        e('h3', { className: "font-black uppercase mb-4 text-center text-sm" }, t.lang),
+        e('div', { className: "flex flex-col gap-1.5 max-h-[40vh] overflow-y-auto pr-1 custom-scroll" }, 
+          Object.keys(translations).map(k => e('button', { key: k, onClick: () => { setLang(k); setIsLangOpen(false); }, className: `p-3.5 rounded-xl font-black text-left flex justify-between items-center text-[10px] transition-all ${lang === k ? 'bg-indigo-600 text-white' : (isDark ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-50 text-slate-600')}` }, translations[k].langName, lang === k && e(Icon, { name: "CheckCircle", className: "w-3.5 h-3.5" })))
+        ),
+        e('button', { onClick: () => setIsLangOpen(false), className: "w-full mt-4 text-[9px] opacity-40 uppercase font-black tracking-widest" }, t.cancel)
+      )
+    )
   );
 };
 
-const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+// Mount App
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = (window as any).ReactDOM.createRoot(rootElement);
+  root.render(e(App));
+}

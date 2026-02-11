@@ -1,5 +1,5 @@
 {
-  "name": "FitCheck Pro Coach",
-  "description": "Standard JS version of the FitCheck Pro Suite.",
+  "name": "FitCheck Pro Coach Suite",
+  "description": "Secure attendance and cycle management for professional coaches.",
   "requestFramePermissions": []
 }

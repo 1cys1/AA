@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>FitCheck Pro | Digital Log Sheet</title>
+    <title>FitCheck Pro | No-Eval Edition</title>
     <meta name="theme-color" content="#020617">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=FC&background=6366f1&color=fff&size=180&bold=true">
     
+    <!-- Load UMD versions to bypass CSP/Eval restrictions -->
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
         :root { 
           --sat: env(safe-area-inset-top); 
-          --sar: env(safe-area-inset-right); 
           --sab: env(safe-area-inset-bottom); 
-          --sal: env(safe-area-inset-left); 
         }
         body { 
           font-family: 'Inter', sans-serif; 
@@ -37,91 +36,68 @@
         }
         #root { height: 100%; width: 100%; overflow: hidden; }
         .mobile-header-pad { padding-top: calc(var(--sat) + 8px); padding-bottom: 8px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
         
         .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
         
-        /* Fixed Column Layout to prevent horizontal scroll */
+        /* Enforce Fixed Width Tables */
         .log-table {
           width: 100%;
           table-layout: fixed;
           border-collapse: collapse;
         }
 
-        .log-table th, .log-table td { 
+        .log-table th {
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 12px 4px;
+          background: rgba(128, 128, 128, 0.05);
+        }
+
+        .log-table td { 
           border: 1px solid rgba(128, 128, 128, 0.08); 
-          padding: 4px 2px;
+          padding: 8px 4px;
           vertical-align: middle;
           word-wrap: break-word;
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        
+
         .session-input {
             background: rgba(128, 128, 128, 0.1);
             border-radius: 8px;
-            padding: 4px 8px;
+            padding: 10px 6px;
             width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            appearance: none;
-            -webkit-appearance: none;
             outline: none;
             border: 1px solid transparent;
-            transition: all 0.2s;
+            font-size: 11px;
+            font-weight: 700;
+            appearance: none;
+            -webkit-appearance: none;
         }
 
-        .dark-mode .session-input {
-            color: white;
-            color-scheme: dark;
-            border-color: rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .light-mode .session-input {
-            color: #0f172a;
-            color-scheme: light;
-            border-color: rgba(0, 0, 0, 0.05);
-            background: rgba(0, 0, 0, 0.03);
-        }
-        
-        .session-input:focus {
-            border-color: #6366f1;
-            background: rgba(99, 102, 241, 0.1);
-        }
-
-        ::-webkit-calendar-picker-indicator {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            filter: grayscale(1);
-            opacity: 0.6;
-        }
-        
-        .dark-mode ::-webkit-calendar-picker-indicator {
-            filter: invert(1) brightness(200%);
-        }
+        .dark-mode .session-input { color: white; border-color: rgba(255, 255, 255, 0.1); }
+        .light-mode .session-input { color: #0f172a; border-color: rgba(0, 0, 0, 0.1); background: #f8fafc; }
 
         canvas { touch-action: none; }
-        button:active { transform: scale(0.97); transition: transform 0.05s; }
+        .active-scale:active { transform: scale(0.97); transition: transform 0.05s; }
+
+        /* Ensure time picker is accessible on mobile */
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="date"]::-webkit-calendar-picker-indicator {
+          filter: invert(0.5);
+          cursor: pointer;
+        }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/"
-  }
-}
-</script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="dark-mode bg-slate-950 text-white">
+<body class="dark-mode">
     <div id="root"></div>
-    <script type="module" src="index.tsx"></script>
+    <!-- Note: index.tsx content below is loaded as a script to handle UMD context -->
+    <script src="index.tsx" type="module"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
