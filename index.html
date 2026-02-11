@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>FitCheck Pro | Coach Suite</title>
-    
+    <title>FitCheck Pro | Digital Log Sheet</title>
     <meta name="theme-color" content="#020617">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,608 +31,97 @@
           margin: 0; 
           user-select: none; 
           overflow: hidden;
-          transition: background-color 0.3s ease, color 0.3s ease;
+          background-color: #020617;
+          height: 100vh;
+          width: 100vw;
         }
-        #root { 
-          height: 100vh; 
-          width: 100vw; 
-          overflow: hidden; 
-          display: flex; 
-          flex-direction: column; 
-        }
-        .mobile-header-pad {
-          padding-top: calc(var(--sat) + 40px);
-          padding-bottom: 20px;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 10px; }
+        #root { height: 100%; width: 100%; overflow: hidden; }
+        .mobile-header-pad { padding-top: calc(var(--sat) + 8px); padding-bottom: 8px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
         
-        button { cursor: pointer; border: none; outline: none; }
-        .confirm-dialog-enter { animation: fadeIn 0.2s ease-out; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
         
-        canvas { touch-action: none; cursor: crosshair; }
-        input[type="date"] { appearance: none; -webkit-appearance: none; }
+        /* Fixed Column Layout to prevent horizontal scroll */
+        .log-table {
+          width: 100%;
+          table-layout: fixed;
+          border-collapse: collapse;
+        }
+
+        .log-table th, .log-table td { 
+          border: 1px solid rgba(128, 128, 128, 0.08); 
+          padding: 4px 2px;
+          vertical-align: middle;
+          word-wrap: break-word;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        .session-input {
+            background: rgba(128, 128, 128, 0.1);
+            border-radius: 8px;
+            padding: 4px 8px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .session-input {
+            color: white;
+            color-scheme: dark;
+            border-color: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .light-mode .session-input {
+            color: #0f172a;
+            color-scheme: light;
+            border-color: rgba(0, 0, 0, 0.05);
+            background: rgba(0, 0, 0, 0.03);
+        }
+        
+        .session-input:focus {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        ::-webkit-calendar-picker-indicator {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            filter: grayscale(1);
+            opacity: 0.6;
+        }
+        
+        .dark-mode ::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(200%);
+        }
+
+        canvas { touch-action: none; }
+        button:active { transform: scale(0.97); transition: transform 0.05s; }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-slate-950 text-white">
+<body class="dark-mode bg-slate-950 text-white">
     <div id="root"></div>
-
-    <script>
-        const e = React.createElement;
-        const { useState, useEffect, useRef, useMemo } = React;
-
-        const translations = {
-          en: {
-            langName: "English", traineeLabel: "Trainee", selectDate: "Attendance Date",
-            dash: "Dashboard", att: "Attendance", manage: "Trainees", logs: "Records",
-            welcome: "Welcome, Coach", total: "Total Students", today: "Today's Lessons",
-            search: "Search students...", checkIn: "Check-In", add: "New Student",
-            lessons: "Lesson Total", sign: "Confirm Signature", reset: "Reset", cancel: "Cancel",
-            verify: "Verification Signature", del: "Delete", confirmDel: "Erase student data?",
-            lang: "Language", theme: "Theme", cycle: "Cycle", renew: "New Cycle",
-            pkgInfo: "Progress", totalSessions: "Lesson Total", cycleNum: "Cycle",
-            save: "Start Cycle", active: "Active", date: "Date", progress: "Progress",
-            history: "History", noHistory: "No history", delLog: "Delete this record and restore 1 lesson?",
-            searchLogs: "Search records by trainee name...", done: "Done", confirm: "Confirm",
-            yes: "Delete", no: "Cancel"
-          },
-          zh_cn: {
-            langName: "简体中文", traineeLabel: "学员姓名", selectDate: "签到日期",
-            dash: "仪表盘", att: "签到", manage: "学员", logs: "记录",
-            welcome: "欢迎回来，教练", total: "学员总数", today: "今日已签",
-            search: "搜索姓名...", checkIn: "签到核销", add: "添加学员",
-            lessons: "购买课时", sign: "确认签名", reset: "重置", cancel: "取消",
-            verify: "身份核验", del: "删除", confirmDel: "确定删除学员？",
-            lang: "语言切换", theme: "主题", cycle: "期数", renew: "开启新期",
-            pkgInfo: "课时进度", totalSessions: "总课时数", cycleNum: "期数",
-            save: "开启新期", active: "活跃", date: "日期", progress: "进度",
-            history: "历史记录", noHistory: "暂无历史", delLog: "删除此记录并恢复1课时？",
-            searchLogs: "通过姓名搜索历史记录...", done: "完成", confirm: "确认操作",
-            yes: "确认删除", no: "取消"
-          },
-          zh_tw: {
-            langName: "繁體中文", traineeLabel: "學員姓名", selectDate: "簽到日期",
-            dash: "儀表盤", att: "簽到", manage: "學員", logs: "記錄",
-            welcome: "歡迎回來，教練", total: "學員總數", today: "今日已簽",
-            search: "搜索姓名...", checkIn: "簽到核銷", add: "添加學員",
-            lessons: "購買課時", sign: "確認簽名", reset: "重置", cancel: "取消",
-            verify: "身份核驗", del: "刪除", confirmDel: "確定刪除學員？",
-            lang: "語言切換", theme: "主題", cycle: "期數", renew: "開啟新期",
-            pkgInfo: "課時進度", totalSessions: "總課時數", cycleNum: "期數",
-            save: "開啟新期", active: "活躍", date: "日期", progress: "進度",
-            history: "歷史記錄", noHistory: "暫無歷史", delLog: "刪除此記錄並恢復1課時？",
-            searchLogs: "通過姓名搜索歷史記錄...", done: "完成", confirm: "確認操作",
-            yes: "確認刪除", no: "取消"
-          },
-          es: {
-            langName: "Español", traineeLabel: "Alumno", selectDate: "Fecha de Asistencia",
-            dash: "Panel", att: "Asistencia", manage: "Alumnos", logs: "Registros",
-            welcome: "Bienvenido, Coach", total: "Total Alumnos", today: "Hoy",
-            search: "Buscar...", checkIn: "Check-In", add: "Nuevo Alumno",
-            lessons: "Total Lecciones", sign: "Firmar", reset: "Reiniciar", cancel: "Cancelar",
-            verify: "Firma de Verificación", del: "Eliminar", confirmDel: "¿Borrar alumno?",
-            lang: "Idioma", theme: "Tema", cycle: "Ciclo", renew: "Nuevo Ciclo",
-            pkgInfo: "Progreso", totalSessions: "Total Lecciones", cycleNum: "Ciclo",
-            save: "Empezar", active: "Activo", date: "Fecha", progress: "Progreso",
-            history: "Historial", noHistory: "Sin historial", delLog: "¿Eliminar y restaurar saldo?",
-            searchLogs: "Buscar registros por nombre...", done: "Listo", confirm: "Confirmar",
-            yes: "Eliminar", no: "Cancelar"
-          },
-          fr: {
-            langName: "Français", traineeLabel: "Élève", selectDate: "Date de Présence",
-            dash: "Tableau", att: "Présence", manage: "Élèves", logs: "Détails",
-            welcome: "Bienvenue, Coach", total: "Total Élèves", today: "Aujourd'hui",
-            search: "Rechercher...", checkIn: "Check-In", add: "Nouvel Élève",
-            lessons: "Total Leçons", sign: "Confirmer", reset: "Reset", cancel: "Annuler",
-            verify: "Signature", del: "Supprimer", confirmDel: "Supprimer l'élève ?",
-            lang: "Langue", theme: "Thème", cycle: "Cycle", renew: "Nouveau Cycle",
-            pkgInfo: "Progrès", totalSessions: "Total Leçons", cycleNum: "Cycle",
-            save: "Démarrer", active: "Actif", date: "Date", progress: "Progrès",
-            history: "Historique", noHistory: "Aucun historique", delLog: "Supprimer et restaurer ?",
-            searchLogs: "Chercher des records par nom...", done: "Terminé", confirm: "Confirmation",
-            yes: "Supprimer", no: "Annuler"
-          },
-          de: {
-            langName: "Deutsch", traineeLabel: "Schüler", selectDate: "Datum",
-            dash: "Dashboard", att: "Anwesenheit", manage: "Schüler", logs: "Protokoll",
-            welcome: "Willkommen, Coach", total: "Gesamt Schüler", today: "Heute",
-            search: "Suchen...", checkIn: "Check-In", add: "Neuer Schüler",
-            lessons: "Lektionen Gesamt", sign: "Unterschreiben", reset: "Reset", cancel: "Abbrechen",
-            verify: "Verifizierung", del: "Löschen", confirmDel: "Schüler löschen?",
-            lang: "Sprache", theme: "Design", cycle: "Zyklus", renew: "Neuer Zyklus",
-            pkgInfo: "Fortschritt", totalSessions: "Lektionen Gesamt", cycleNum: "Zyklus",
-            save: "Starten", active: "Aktiv", date: "Datum", progress: "Fortschritt",
-            history: "Historie", noHistory: "Keine Historie", delLog: "Löschen and wiederherstellen?",
-            searchLogs: "Einträge nach Name suchen...", done: "Fertig", confirm: "Bestätigen",
-            yes: "Löschen", no: "Abbrechen"
-          }
-        };
-
-        const db = {
-          KEYS: { TR: 'fit_tr_v8', LG: 'fit_lg_v8', TM: 'fit_theme_v8', LN: 'fit_lang_v8' },
-          get: (k) => JSON.parse(localStorage.getItem(k) || (k === db.KEYS.LN ? '"en"' : '[]')),
-          set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
-        };
-
-        const Icon = ({ name, className }) => {
-          const iconName = name.charAt(0).toLowerCase() + name.slice(1);
-          const iconData = window.lucide.icons[iconName] || window.lucide.icons[name];
-          if (!iconData) return e('span', { className });
-          const [tag, attrs, children] = iconData;
-          return e(tag, { ...attrs, className: className || 'w-6 h-6', stroke: 'currentColor', key: name }, 
-            children.map((child, i) => e(child[0], { ...child[1], key: i }))
-          );
-        };
-
-        const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, t, isDark }) => {
-          if (!isOpen) return null;
-          return e('div', { className: 'fixed inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-            e('div', { className: `w-full max-sm p-8 border rounded-[3rem] shadow-2xl confirm-dialog-enter ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-              e('h3', { className: 'text-2xl font-black uppercase mb-4 text-center' }, title),
-              e('p', { className: 'text-slate-500 text-center font-medium mb-8' }, message),
-              e('div', { className: 'flex flex-col gap-3' }, [
-                e('button', { onClick: onConfirm, className: 'w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-indigo-500/20 active:scale-95 transition-all' }, t.yes),
-                e('button', { onClick: onCancel, className: `w-full py-5 rounded-2xl font-black uppercase active:scale-95 transition-all ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}` }, t.no)
-              ])
-            ])
-          ]);
-        };
-
-        const SignaturePad = ({ onSave, onCancel, t, theme }) => {
-          const canvasRef = useRef(null);
-          const [isDrawing, setIsDrawing] = useState(false);
-          const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-          const isDark = theme === 'dark';
-
-          useEffect(() => {
-            const canvas = canvasRef.current;
-            const initCanvas = () => {
-              const dpr = window.devicePixelRatio || 1;
-              const rect = canvas.getBoundingClientRect();
-              
-              // Internal resolution
-              canvas.width = rect.width * dpr;
-              canvas.height = rect.height * dpr;
-              
-              const ctx = canvas.getContext('2d');
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.lineWidth = 4 * dpr;
-              ctx.strokeStyle = '#6366f1';
-              
-              // Scaling the context to use CSS pixels for drawing logic
-              ctx.scale(dpr, dpr);
-            };
-
-            const timer = setTimeout(initCanvas, 150);
-            window.addEventListener('resize', initCanvas);
-            return () => {
-              clearTimeout(timer);
-              window.removeEventListener('resize', initCanvas);
-            };
-          }, []);
-
-          const getPos = (ev) => {
-            const canvas = canvasRef.current;
-            if (!canvas) return { x: 0, y: 0 };
-            
-            const rect = canvas.getBoundingClientRect();
-            
-            let clientX, clientY;
-            if (ev.touches && ev.touches[0]) {
-                clientX = ev.touches[0].clientX;
-                clientY = ev.touches[0].clientY;
-            } else {
-                clientX = ev.clientX;
-                clientY = ev.clientY;
-            }
-
-            // High compatibility coordinate mapping:
-            // Subtracting rect position from the client window position correctly maps to CSS coordinates
-            // inside the canvas, which is already ctx.scale(dpr)d.
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
-          };
-
-          const start = (ev) => {
-            if (ev.cancelable) ev.preventDefault();
-            const { x, y } = getPos(ev);
-            const ctx = canvasRef.current.getContext('2d');
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            setIsDrawing(true);
-          };
-
-          const move = (ev) => {
-            if (!isDrawing) return;
-            if (ev.cancelable) ev.preventDefault();
-            const { x, y } = getPos(ev);
-            const ctx = canvasRef.current.getContext('2d');
-            ctx.lineTo(x, y);
-            ctx.stroke();
-          };
-
-          const stop = () => setIsDrawing(false);
-
-          return e('div', { className: 'space-y-6' }, [
-            e('div', {}, [
-                e('label', { className: 'text-[10px] font-black uppercase text-slate-500 mb-2 block tracking-widest' }, t.selectDate),
-                e('input', { 
-                    type: 'date', 
-                    value: selectedDate,
-                    onChange: (ev) => setSelectedDate(ev.target.value),
-                    className: `w-full p-4 rounded-xl font-bold border outline-none ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-slate-50 border-slate-100 text-slate-900'}`
-                })
-            ]),
-            e('div', { className: `relative h-64 border-2 rounded-[2.5rem] overflow-hidden ${isDark ? 'border-white/10 bg-black/40' : 'border-slate-200 bg-white shadow-inner'}` }, [
-              e('canvas', {
-                ref: canvasRef,
-                onMouseDown: start, 
-                onMouseMove: move, 
-                onMouseUp: stop,
-                onMouseOut: stop,
-                onTouchStart: start, 
-                onTouchMove: move, 
-                onTouchEnd: stop,
-                className: 'w-full h-full block touch-none'
-              }),
-              e('div', { className: `absolute top-6 right-8 text-[9px] font-black uppercase tracking-widest pointer-events-none select-none ${isDark ? 'opacity-20' : 'opacity-40 text-slate-400'}` }, t.verify)
-            ]),
-            e('div', { className: 'flex gap-4' }, [
-              e('button', { onClick: () => {
-                const canvas = canvasRef.current;
-                const dpr = window.devicePixelRatio || 1;
-                canvas.getContext('2d').clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-              }, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.reset),
-              e('button', { onClick: onCancel, className: `flex-1 py-5 rounded-2xl font-bold text-[11px] uppercase ${isDark ? 'bg-white/5' : 'bg-slate-100 border border-slate-200'}` }, t.cancel),
-              e('button', { onClick: () => onSave(canvasRef.current.toDataURL(), selectedDate), className: 'flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-bold text-[11px] uppercase shadow-xl shadow-indigo-500/30 active:scale-95' }, t.sign)
-            ])
-          ]);
-        };
-
-        const App = () => {
-          const [lang, setLang] = useState(() => db.get(db.KEYS.LN));
-          const [theme, setTheme] = useState(() => localStorage.getItem(db.KEYS.TM) || 'dark');
-          const [view, setView] = useState('dash');
-          const [trainees, setTrainees] = useState(() => db.get(db.KEYS.TR));
-          const [logs, setLogs] = useState(() => db.get(db.KEYS.LG));
-          const [search, setSearch] = useState('');
-          const [logSearch, setLogSearch] = useState('');
-          
-          const [activeUser, setActiveUser] = useState(null);
-          const [isAdding, setIsAdding] = useState(false);
-          const [renewing, setRenewing] = useState(null);
-          const [showingHistory, setShowingHistory] = useState(null);
-          const [isLangOpen, setIsLangOpen] = useState(false);
-          
-          const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null, message: '' });
-
-          const t = translations[lang] || translations['en'];
-          const isDark = theme === 'dark';
-
-          useEffect(() => {
-            document.body.className = isDark ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900';
-            localStorage.setItem(db.KEYS.TM, theme);
-          }, [theme]);
-
-          useEffect(() => db.set(db.KEYS.LN, lang), [lang]);
-          useEffect(() => db.set(db.KEYS.LG, logs), [logs]);
-          useEffect(() => db.set(db.KEYS.TR, trainees), [trainees]);
-
-          const filtered = useMemo(() => trainees.filter(tr => tr.name.toLowerCase().includes(search.toLowerCase())), [trainees, search]);
-          const filteredLogs = useMemo(() => logs.filter(l => l.name.toLowerCase().includes(logSearch.toLowerCase())), [logs, logSearch]);
-
-          const performDeletion = () => {
-            const { type, targetId } = confirmModal;
-            if (type === 'log') {
-              const logToRemove = logs.find(l => String(l.id) === String(targetId));
-              if (logToRemove) {
-                setLogs(prev => prev.filter(l => String(l.id) !== String(targetId)));
-                setTrainees(prev => prev.map(tr => {
-                  const isMatch = logToRemove.traineeId ? String(tr.id) === String(logToRemove.traineeId) : tr.name === logToRemove.name;
-                  if (isMatch && Number(tr.cycle) === Number(logToRemove.cycle)) {
-                    return { ...tr, done: Math.max(0, tr.done - 1) };
-                  }
-                  return tr;
-                }));
-              }
-            } else if (type === 'trainee') {
-              setTrainees(prev => prev.filter(tr => String(tr.id) !== String(targetId)));
-            }
-            setConfirmModal({ isOpen: false, type: null, targetId: null, message: '' });
-          };
-
-          const NavBtn = (id, icon, label) => e('button', {
-            onClick: () => setView(id),
-            className: `flex items-center gap-4 px-6 py-5 rounded-2xl transition-all ${view === id 
-              ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/30 scale-105' 
-              : (isDark ? 'text-slate-500 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-200/50')}`
-          }, [
-            e(Icon, { name: icon, className: 'w-5 h-5' }),
-            e('span', { className: 'font-black uppercase text-[10px] tracking-widest' }, label)
-          ]);
-
-          const stats = useMemo(() => ({
-            total: trainees.length,
-            today: logs.filter(l => new Date(l.date).toDateString() === new Date().toDateString()).length,
-            active: trainees.filter(tr => tr.done < tr.total).length
-          }), [trainees, logs]);
-
-          return e('div', { className: 'flex h-screen flex-col lg:flex-row overflow-hidden' }, [
-            e('nav', { className: `hidden lg:flex w-80 flex-col gap-10 p-10 border-r ${isDark ? 'border-white/5' : 'border-slate-200 shadow-xl'}` }, [
-              e('div', { className: 'flex items-center gap-4' }, [
-                e('div', { className: 'p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20' }, e(Icon, { name: 'Activity', className: 'w-7 h-7 text-white' })),
-                e('h1', { className: 'text-2xl font-black italic uppercase tracking-tighter' }, 'FitCheck')
-              ]),
-              e('div', { className: 'flex flex-col gap-2' }, [
-                NavBtn('dash', 'LayoutDashboard', t.dash),
-                NavBtn('att', 'CheckCircle2', t.att),
-                NavBtn('manage', 'Users2', t.manage),
-                NavBtn('logs', 'History', t.logs)
-              ]),
-              e('div', { className: 'mt-auto space-y-3' }, [
-                e('button', { 
-                  onClick: () => setTheme(isDark ? 'light' : 'dark'),
-                  className: `w-full flex justify-between p-4 border rounded-xl text-[10px] font-black uppercase ${isDark ? 'border-white/5 bg-white/5' : 'border-slate-200 hover:bg-slate-100'}`
-                }, [ e('span', {}, t.theme), e(Icon, { name: isDark ? 'Moon' : 'Sun', className: 'w-4 h-4' }) ]),
-                e('button', { 
-                  onClick: () => setIsLangOpen(true),
-                  className: `w-full flex justify-between p-4 border rounded-xl text-[10px] font-black uppercase ${isDark ? 'border-white/5 bg-white/5' : 'border-slate-200 hover:bg-slate-100'}`
-                }, [ e('span', {}, t.lang), e('span', {}, t.langName) ])
-              ])
-            ]),
-
-            e('header', { className: `lg:hidden mobile-header-pad flex justify-between items-center px-6 border-b z-50 sticky top-0 ${isDark ? 'bg-slate-950/95 border-white/5' : 'bg-white/95 border-slate-200'} backdrop-blur-xl shadow-lg` }, [
-              e('h1', { className: 'font-black italic uppercase text-2xl tracking-tight' }, 'FitCheck'),
-              e('div', { className: 'flex gap-1 items-center' }, [
-                e('button', { onClick: () => setTheme(isDark ? 'light' : 'dark'), className: 'p-3 active:bg-slate-500/10 rounded-full transition-colors' }, e(Icon, { name: isDark ? 'Moon' : 'Sun', className: 'w-6 h-6 opacity-60' })),
-                e('button', { onClick: () => setIsLangOpen(true), className: 'p-3 text-[11px] font-black uppercase tracking-widest opacity-80 active:bg-slate-500/10 rounded-xl' }, lang.toUpperCase())
-              ])
-            ]),
-
-            e('main', { className: 'flex-1 overflow-y-auto p-6 lg:p-14 pb-32' }, [
-              e('div', { className: 'max-w-5xl mx-auto space-y-12 animate-fade-in' }, [
-                view === 'dash' && e('div', { className: 'space-y-12' }, [
-                  e('div', {}, [
-                    e('h2', { className: 'text-5xl font-black mb-2' }, t.welcome),
-                    e('p', { className: 'text-slate-500 font-medium' }, 'Studio performance and trainee progress.')
-                  ]),
-                  e('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-6' }, [
-                    e('div', { className: `p-8 rounded-[3rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` }, [
-                      e('p', { className: 'text-[10px] font-black uppercase text-slate-500 tracking-widest' }, t.total),
-                      e('p', { className: 'text-4xl font-black mt-3' }, stats.total)
-                    ]),
-                    e('div', { className: `p-8 rounded-[3rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` }, [
-                      e('p', { className: 'text-[10px] font-black uppercase text-slate-500 tracking-widest' }, t.today),
-                      e('p', { className: 'text-4xl font-black mt-3 text-indigo-500' }, stats.today)
-                    ]),
-                    e('div', { className: `p-8 rounded-[3rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` }, [
-                      e('p', { className: 'text-[10px] font-black uppercase text-slate-500 tracking-widest' }, t.active),
-                      e('p', { className: 'text-4xl font-black mt-3' }, stats.active)
-                    ])
-                  ])
-                ]),
-
-                view === 'att' && e('div', { className: 'space-y-8' }, [
-                  e('div', { className: 'flex flex-col md:flex-row md:items-center justify-between gap-6' }, [
-                    e('h2', { className: 'text-4xl font-black italic uppercase' }, t.att),
-                    e('div', { className: 'relative flex-1 max-w-sm' }, [
-                      e(Icon, { name: 'Search', className: 'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40' }),
-                      e('input', { 
-                        placeholder: t.search, onChange: (ev) => setSearch(ev.target.value), 
-                        className: `w-full rounded-2xl pl-12 pr-6 py-4 text-sm outline-none border transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm focus:border-indigo-500'}` 
-                      })
-                    ])
-                  ]),
-                  e('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' }, filtered.map(tr => {
-                    const progress = Math.min((tr.done / tr.total) * 100, 100);
-                    const isCompleted = tr.done >= tr.total;
-                    return e('div', { key: tr.id, className: `p-7 border rounded-[2.5rem] flex flex-col gap-5 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm transition-all hover:scale-[1.01]'}` }, [
-                      e('div', { className: 'flex justify-between items-start' }, [
-                        e('div', {}, [
-                          e('p', { className: 'font-black text-xl' }, tr.name),
-                          e('div', { className: 'flex gap-3 items-center mt-2' }, [
-                             e('span', { className: 'text-[10px] font-black text-indigo-500 uppercase px-3 py-1 bg-indigo-500/10 rounded-full' }, `${t.cycle} ${tr.cycle || 1}`),
-                             e('span', { className: 'text-[10px] font-black text-slate-500 uppercase' }, `${tr.done} / ${tr.total}`)
-                          ])
-                        ]),
-                        e('button', { 
-                          onClick: () => setActiveUser(tr), disabled: isCompleted,
-                          className: `w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-90 ${isCompleted ? 'opacity-20 bg-slate-500 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-indigo-600/30'}` 
-                        }, e(Icon, { name: 'Check', className: 'w-7 h-7' }))
-                      ]),
-                      e('div', { className: `w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}` }, [
-                        e('div', { className: `h-full transition-all duration-700 ${isCompleted ? 'bg-emerald-500' : 'bg-indigo-500'}`, style: { width: `${progress}%` } })
-                      ])
-                    ]);
-                  }))
-                ]),
-
-                view === 'manage' && e('div', { className: 'space-y-8' }, [
-                  e('div', { className: 'flex justify-between items-center' }, [
-                    e('h2', { className: 'text-4xl font-black italic uppercase' }, t.manage),
-                    e('button', { onClick: () => setIsAdding(true), className: 'px-8 py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 shadow-indigo-600/20' }, t.add)
-                  ]),
-                  e('div', { className: 'space-y-4' }, trainees.map(tr => e('div', { key: tr.id, className: `p-8 border rounded-[3rem] flex flex-col gap-6 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` }, [
-                    e('div', { className: 'flex flex-col md:flex-row md:items-center justify-between gap-4' }, [
-                      e('div', { className: 'flex flex-col gap-1' }, [
-                        e('p', { className: 'text-2xl font-black' }, tr.name),
-                        e('p', { className: 'text-xs text-slate-500 uppercase font-black tracking-widest' }, `${t.cycleNum} ${tr.cycle || 1} • ${tr.done}/${tr.total} ${t.progress}`)
-                      ]),
-                      e('div', { className: 'flex gap-3' }, [
-                        e('button', { onClick: () => setShowingHistory(tr), className: `p-4 rounded-xl border transition-all ${isDark ? 'border-white/10' : 'border-slate-200 hover:bg-slate-50'}` }, e(Icon, { name: 'History', className: 'w-5 h-5 opacity-60' })),
-                        e('button', { onClick: () => setRenewing(tr), className: `px-7 py-4 rounded-xl font-black text-[11px] uppercase border transition-all ${isDark ? 'border-white/10 text-indigo-400' : 'border-slate-200 text-indigo-600'}` }, t.renew),
-                        e('button', { 
-                          onClick: () => setConfirmModal({ isOpen: true, type: 'trainee', targetId: tr.id, message: t.confirmDel }),
-                          className: 'p-4 bg-rose-500/10 text-rose-500 rounded-xl active:scale-90 transition-all hover:bg-rose-500/20' 
-                        }, e(Icon, { name: 'Trash2' }))
-                      ])
-                    ])
-                  ])))
-                ]),
-
-                view === 'logs' && e('div', { className: 'space-y-8 pb-10' }, [
-                  e('div', { className: 'flex flex-col md:flex-row md:items-center justify-between gap-6' }, [
-                    e('h2', { className: 'text-4xl font-black italic uppercase' }, t.logs),
-                    e('div', { className: 'relative flex-1 max-w-sm' }, [
-                      e(Icon, { name: 'Search', className: 'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40' }),
-                      e('input', { 
-                        placeholder: t.searchLogs, value: logSearch, onChange: (ev) => setLogSearch(ev.target.value), 
-                        className: `w-full rounded-2xl pl-12 pr-6 py-4 text-sm outline-none border transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm focus:border-indigo-500'}` 
-                      })
-                    ])
-                  ]),
-                  e('div', { className: `rounded-[2.5rem] overflow-hidden border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}` }, [
-                    e('div', { className: 'overflow-x-auto' }, [
-                        e('table', { className: 'w-full text-left border-collapse min-w-[700px]' }, [
-                            e('thead', { className: isDark ? 'bg-white/5' : 'bg-slate-50' }, e('tr', {}, [
-                                e('th', { className: 'p-6 text-[11px] font-black uppercase text-slate-500 tracking-widest' }, t.traineeLabel),
-                                e('th', { className: 'p-6 text-[11px] font-black uppercase text-slate-500 tracking-widest' }, t.date),
-                                e('th', { className: 'p-6 text-[11px] font-black uppercase text-slate-500 tracking-widest' }, t.progress),
-                                e('th', { className: 'p-6 text-center text-[11px] font-black uppercase text-slate-500 tracking-widest' }, 'Sign'),
-                                e('th', { className: 'p-6 w-24' }, '')
-                            ])),
-                            e('tbody', {}, filteredLogs.length > 0 ? filteredLogs.map(l => e('tr', { key: l.id, className: `border-t ${isDark ? 'border-white/5' : 'border-slate-100'} hover:bg-indigo-500/5 transition-colors` }, [
-                                e('td', { className: 'p-6 text-sm font-black' }, l.name),
-                                e('td', { className: 'p-6 text-xs text-slate-500 font-medium' }, new Date(l.date).toLocaleDateString()),
-                                e('td', { className: 'p-6 text-xs text-indigo-500 font-black' }, `${t.cycleNum} ${l.cycle} | ${l.progress}`),
-                                e('td', { className: 'p-6 text-center' }, e('img', { src: l.sig, className: `h-10 mx-auto opacity-80 ${isDark ? 'invert' : ''}` })),
-                                e('td', { className: 'p-6 text-center' }, e('button', { 
-                                    onClick: () => setConfirmModal({ isOpen: true, type: 'log', targetId: l.id, message: t.delLog }),
-                                    className: 'p-4 text-rose-500 hover:bg-rose-500/10 rounded-2xl transition-all active:scale-90 border border-transparent hover:border-rose-500/20'
-                                }, e(Icon, { name: 'XCircle', className: 'w-7 h-7' })))
-                            ])) : e('tr', {}, e('td', { colSpan: 5, className: 'p-12 text-center text-slate-500 font-bold' }, t.noHistory)))
-                        ])
-                    ])
-                  ])
-                ])
-              ])
-            ]),
-
-            e('nav', { className: `lg:hidden fixed bottom-0 left-0 right-0 h-24 border-t flex items-center justify-around z-[100] backdrop-blur-3xl pb-[env(safe-area-inset-bottom)] ${isDark ? 'bg-slate-950/90 border-white/5' : 'bg-white/90 border-slate-200'} shadow-[0_-8px_30px_rgb(0,0,0,0.12)]` }, [
-              e('button', { onClick: () => setView('dash'), className: `flex flex-col items-center gap-1 p-2 flex-1 transition-all active:scale-95 ${view === 'dash' ? 'text-indigo-500' : 'text-slate-400'}` }, [e(Icon, { name: 'LayoutDashboard' }), e('span', { className: 'text-[9px] font-black uppercase' }, t.dash)]),
-              e('button', { onClick: () => setView('att'), className: `flex flex-col items-center gap-1 p-2 flex-1 transition-all active:scale-95 ${view === 'att' ? 'text-indigo-500' : 'text-slate-400'}` }, [e(Icon, { name: 'CheckCircle2' }), e('span', { className: 'text-[9px] font-black uppercase' }, t.att)]),
-              e('button', { onClick: () => setView('manage'), className: `flex flex-col items-center gap-1 p-2 flex-1 transition-all active:scale-95 ${view === 'manage' ? 'text-indigo-500' : 'text-slate-400'}` }, [e(Icon, { name: 'Users2' }), e('span', { className: 'text-[9px] font-black uppercase' }, t.manage)]),
-              e('button', { onClick: () => setView('logs'), className: `flex flex-col items-center gap-1 p-2 flex-1 transition-all active:scale-95 ${view === 'logs' ? 'text-indigo-500' : 'text-slate-400'}` }, [e(Icon, { name: 'History' }), e('span', { className: 'text-[9px] font-black uppercase' }, t.logs)])
-            ]),
-
-            activeUser && e('div', { className: 'fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-              e('div', { className: `w-full max-w-2xl p-8 lg:p-12 border rounded-[4rem] shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-                e('h3', { className: 'text-3xl font-black italic uppercase mb-1' }, activeUser.name),
-                e('p', { className: 'text-[11px] text-slate-500 uppercase font-black tracking-widest mb-6' }, `${t.cycleNum} ${activeUser.cycle || 1} • ${activeUser.done + 1} / ${activeUser.total}`),
-                e(SignaturePad, { t, theme, onCancel: () => setActiveUser(null), onSave: (sig, attendanceDate) => {
-                  const logId = Date.now();
-                  const log = { id: logId, traineeId: activeUser.id, name: activeUser.name, date: attendanceDate, sig, cycle: activeUser.cycle || 1, progress: `${activeUser.done + 1}/${activeUser.total}` };
-                  setLogs(prev => [log, ...prev]);
-                  setTrainees(prev => prev.map(x => String(x.id) === String(activeUser.id) ? { ...x, done: x.done + 1 } : x));
-                  setActiveUser(null);
-                }})
-              ])
-            ]),
-
-            isAdding && e('div', { className: 'fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-              e('div', { className: `w-full max-w-lg p-10 border rounded-[3.5rem] shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-                e('h3', { className: 'text-3xl font-black italic uppercase mb-10 text-center' }, t.add),
-                e('div', { className: 'space-y-6' }, [
-                  e('div', {}, [
-                    e('label', { className: 'text-[10px] font-black uppercase text-slate-500 mb-2 block' }, t.traineeLabel),
-                    e('input', { id: 'in-name', placeholder: 'e.g. Sam', className: `w-full p-5 rounded-2xl outline-none font-bold border transition-all ${isDark ? 'bg-white/5 border-white/5 focus:border-indigo-500' : 'bg-slate-50 border-slate-100 focus:border-indigo-500'}` })
-                  ]),
-                  e('div', {}, [
-                    e('label', { className: 'text-[10px] font-black uppercase text-slate-500 mb-2 block' }, t.lessons),
-                    e('input', { id: 'in-total', type: 'number', defaultValue: 10, className: `w-full p-5 rounded-2xl outline-none font-bold border transition-all ${isDark ? 'bg-white/5 border-white/5 focus:border-indigo-500' : 'bg-slate-50 border-slate-100 focus:border-indigo-500'}` })
-                  ]),
-                  e('button', { onClick: () => {
-                    const n = document.getElementById('in-name').value;
-                    const tot = parseInt(document.getElementById('in-total').value) || 10;
-                    if (!n) return;
-                    setTrainees(prev => [...prev, { id: Date.now(), name: n, done: 0, total: tot, cycle: 1, history: [] }]);
-                    setIsAdding(false);
-                  }, className: 'w-full py-6 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-xl mt-6 active:scale-95 transition-all shadow-indigo-600/20' }, t.add),
-                  e('button', { onClick: () => setIsAdding(false), className: 'w-full py-4 text-slate-500 font-bold uppercase text-[10px] active:text-indigo-500' }, t.cancel)
-                ])
-              ])
-            ]),
-
-            renewing && e('div', { className: 'fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-              e('div', { className: `w-full max-w-lg p-10 border rounded-[3.5rem] shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-                e('h3', { className: 'text-3xl font-black italic uppercase mb-2 text-center' }, t.renew),
-                e('p', { className: 'text-[10px] text-slate-500 font-black uppercase tracking-widest mb-10 text-center' }, `${renewing.name} | Cycle ${renewing.cycle} -> ${renewing.cycle + 1}`),
-                e('div', { className: 'space-y-6' }, [
-                  e('div', {}, [
-                    e('label', { className: 'text-[10px] font-black uppercase text-slate-500 mb-2 block' }, t.totalSessions),
-                    e('input', { id: 're-total', type: 'number', defaultValue: renewing.total, className: `w-full p-5 rounded-2xl outline-none font-bold border transition-all ${isDark ? 'bg-white/5 border-white/5 focus:border-indigo-500' : 'bg-slate-50 border-slate-100 focus:border-indigo-500'}` })
-                  ]),
-                  e('button', { onClick: () => {
-                    const tot = parseInt(document.getElementById('re-total').value) || 10;
-                    setTrainees(prev => prev.map(tr => tr.id === renewing.id ? { ...tr, done: 0, total: tot, cycle: (tr.cycle || 1) + 1, history: [...(tr.history || []), { date: new Date().toLocaleDateString(), cycle: tr.cycle || 1, result: `${tr.done}/${tr.total}` }] } : tr));
-                    setRenewing(null);
-                  }, className: 'w-full py-6 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-xl mt-6 active:scale-95 transition-all' }, t.save),
-                  e('button', { onClick: () => setRenewing(null), className: 'w-full py-4 text-slate-500 font-bold uppercase text-[10px] active:text-indigo-500' }, t.cancel)
-                ])
-              ])
-            ]),
-
-            showingHistory && e('div', { className: 'fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-                e('div', { className: `w-full max-w-xl p-10 border rounded-[4rem] shadow-2xl flex flex-col max-h-[80vh] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-                  e('div', { className: 'flex justify-between items-start mb-8' }, [
-                    e('div', {}, [
-                      e('h3', { className: 'text-4xl font-black italic uppercase mb-2' }, showingHistory.name),
-                      e('p', { className: 'text-[11px] text-slate-500 uppercase font-black tracking-widest' }, t.history)
-                    ]),
-                    e('button', { onClick: () => setShowingHistory(null), className: 'p-3 active:bg-slate-500/10 rounded-full' }, e(Icon, { name: 'X' }))
-                  ]),
-                  e('div', { className: 'flex-1 overflow-y-auto space-y-4 pr-2' }, 
-                     (showingHistory.history && showingHistory.history.length > 0) ? showingHistory.history.map((h, i) => 
-                       e('div', { key: i, className: `p-6 rounded-3xl border flex justify-between items-center ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100 shadow-sm'}` }, [
-                         e('div', {}, [
-                           e('p', { className: 'text-[10px] font-black text-slate-500 uppercase mb-1' }, `${t.cycleNum} ${h.cycle}`),
-                           e('p', { className: 'text-lg font-black' }, h.date)
-                         ]),
-                         e('p', { className: 'text-2xl font-black text-indigo-500' }, h.result)
-                       ])
-                     ) : e('p', { className: 'text-slate-500 text-center py-10 font-bold' }, t.noHistory)
-                  ),
-                  e('button', { onClick: () => setShowingHistory(null), className: 'w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase mt-8 shadow-xl active:scale-95 shadow-indigo-600/20' }, t.done)
-                ])
-            ]),
-
-            isLangOpen && e('div', { className: 'fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-6' }, [
-              e('div', { className: `w-full max-w-sm p-8 border rounded-[3rem] shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}` }, [
-                e('h3', { className: 'text-2xl font-black italic uppercase mb-6 text-center' }, t.lang),
-                e('div', { className: 'grid grid-cols-1 gap-2' }, Object.keys(translations).map(k => e('button', {
-                  key: k,
-                  onClick: () => { setLang(k); setIsLangOpen(false); },
-                  className: `w-full py-4 px-6 rounded-2xl font-bold transition-all text-left flex justify-between items-center ${lang === k ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : (isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50')}`
-                }, [
-                  translations[k].langName,
-                  lang === k && e(Icon, { name: 'Check', className: 'w-4 h-4' })
-                ]))),
-                e('button', { onClick: () => setIsLangOpen(false), className: 'w-full py-4 text-slate-500 font-bold uppercase text-[10px] mt-4 active:text-indigo-500' }, t.cancel)
-              ])
-            ]),
-
-            e(ConfirmModal, {
-              isOpen: confirmModal.isOpen,
-              title: t.confirm,
-              message: confirmModal.message,
-              t: t,
-              isDark: isDark,
-              onConfirm: performDeletion,
-              onCancel: () => setConfirmModal({ isOpen: false, type: null, targetId: null, message: '' })
-            })
-          ]);
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(e(App));
-    </script>
+    <script type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
