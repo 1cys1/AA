@@ -10,11 +10,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=FC&background=6366f1&color=fff&size=180&bold=true">
     
-    <!-- External Dependencies (UMD Versions for CSP Compliance) -->
+    <!-- External Dependencies -->
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Libraries for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
@@ -48,32 +52,33 @@
         }
 
         .log-table th {
-          font-size: 11px;
+          font-size: 0.85rem; 
           font-weight: 900;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
-          padding: 18px 8px;
+          letter-spacing: 0.05em;
+          padding: 1em 0.5em;
           text-align: center;
           border-bottom: 2px solid rgba(128, 128, 128, 0.2);
         }
 
         .log-table td { 
           border: 1px solid rgba(128, 128, 128, 0.1); 
-          padding: 12px 6px;
+          padding: 0.75em 0.5em;
           vertical-align: middle;
           word-wrap: break-word;
           overflow: hidden;
           text-overflow: ellipsis;
+          font-size: 0.9rem;
         }
 
         .session-input {
             background: rgba(128, 128, 128, 0.1);
-            border-radius: 12px;
-            padding: 14px 10px;
+            border-radius: 0.75em;
+            padding: 0.8em 0.6em;
             width: 100%;
             outline: none;
             border: 2px solid transparent;
-            font-size: 14px;
+            font-size: 0.9rem;
             font-weight: 800;
             appearance: none;
             -webkit-appearance: none;
@@ -97,7 +102,6 @@
 </head>
 <body class="dark-mode">
     <div id="root"></div>
-    <!-- Use standard .js extension to satisfy GitHub Pages MIME requirements -->
     <script src="index.js"></script>
 <script type="module" src="/index.tsx"></script>
 </body>

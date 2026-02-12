@@ -1,7 +1,7 @@
 (function() {
   const { useState, useEffect, useRef, useMemo } = window.React;
   const e = window.React.createElement;
-
+  
   const translations = {
     en: {
       langName: "English", traineeLabel: "Member", selectDate: "Date", selectTime: "Time",
@@ -18,7 +18,9 @@
       yes: "Delete", no: "Cancel", pending: "Draft", completed: "Complete",
       allHistory: "Historical Records", selectToView: "Select a member to view records",
       completeAt: "Attendance Timestamp", selectMember: "Select Student", saveChange: "Save", clear: "Clear Session",
-      sessionInfo: "Session Schedule", placeholder: "Tap to Schedule"
+      sessionInfo: "Session Schedule", placeholder: "Tap to Schedule",
+      data: "Data Management", 
+      exportPdf: "Export Records (PDF)", pdfGen: "Generating PDF..."
     },
     zh_cn: {
       langName: "简体中文", traineeLabel: "学员姓名", selectDate: "日期", selectTime: "时间",
@@ -35,7 +37,9 @@
       yes: "确认删除", no: "取消", pending: "草稿", completed: "已完成",
       allHistory: "历史存档", selectToView: "选择学员查看记录",
       completeAt: "签到完成时间", selectMember: "选择学员", saveChange: "保存", clear: "清除时间",
-      sessionInfo: "课程安排", placeholder: "点击排课"
+      sessionInfo: "课程安排", placeholder: "点击排课",
+      data: "数据管理",
+      exportPdf: "导出记录 (PDF)", pdfGen: "生成 PDF 中..."
     },
     zh_tw: {
       langName: "繁體中文", traineeLabel: "學員姓名", selectDate: "日期", selectTime: "時間",
@@ -52,7 +56,9 @@
       yes: "確認刪除", no: "取消", pending: "學員草稿", completed: "已完成",
       allHistory: "歷史存檔", selectToView: "選擇學員查看記錄",
       completeAt: "簽到完成時間", selectMember: "選擇學員", saveChange: "保存", clear: "清除時間",
-      sessionInfo: "課程安排", placeholder: "尚未排課"
+      sessionInfo: "課程安排", placeholder: "尚未排課",
+      data: "數據管理",
+      exportPdf: "導出記錄 (PDF)", pdfGen: "生成 PDF 中..."
     }
   };
 
@@ -61,7 +67,11 @@
     get: (k) => {
       try {
         const val = localStorage.getItem(k);
-        if (!val) return k === db.KEYS.LN ? 'en' : k === db.KEYS.TM ? 'dark' : [];
+        if (!val) {
+             if (k === db.KEYS.LN) return 'en';
+             if (k === db.KEYS.TM) return 'dark';
+             return [];
+        }
         return JSON.parse(val);
       } catch (e) { return k === db.KEYS.LN ? 'en' : k === db.KEYS.TM ? 'dark' : []; }
     },
@@ -78,19 +88,36 @@
     );
   };
 
-  const formatSessionDisplay = (dateStr, timeStr) => {
-      if (!dateStr) return null;
-      const [y, m, d] = dateStr.split('-');
+  // Improved Date/Time Display (Scheduled)
+  const SessionDisplay = ({ date, time }) => {
+      if (!date) return null;
+      const [y, m, d] = date.split('-');
       const dateFormatted = d + '/' + m + '/' + y;
-      let timeFormatted = "";
-      if (timeStr) {
-          const [h, min] = timeStr.split(':');
+      let timeFormatted = "--:--";
+      if (time) {
+          const [h, min] = time.split(':');
           const hour = parseInt(h);
           const ampm = hour >= 12 ? 'pm' : 'am';
           const h12 = hour % 12 || 12;
           timeFormatted = h12 + ':' + min + ampm;
       }
-      return dateFormatted + ' • ' + (timeFormatted || '--:--');
+      return e('div', { className: "flex flex-col items-start leading-tight" },
+          e('span', { className: "font-black text-[1em]" }, dateFormatted),
+          e('span', { className: "font-medium opacity-60 text-[0.8em]" }, timeFormatted)
+      );
+  };
+  
+  // Improved Timestamp Display (Completed)
+  const TimestampDisplay = ({ timestamp }) => {
+      if (!timestamp) return e('span', { className: "opacity-30" }, "--");
+      const parts = timestamp.split(' ');
+      const datePart = parts[0] || "";
+      const timePart = parts.slice(1).join(' ') || "";
+      
+      return e('div', { className: "flex flex-col items-end leading-tight text-emerald-500" },
+          e('span', { className: "font-bold text-[0.85em]" }, datePart),
+          e('span', { className: "font-medium opacity-70 text-[0.7em]" }, timePart)
+      );
   };
 
   const SignatureModal = ({ isOpen, title, onSave, onCancel, t, isDark }) => {
@@ -155,6 +182,7 @@
     const [isAdding, setIsAdding] = useState(false);
     const [isRenewing, setIsRenewing] = useState(null);
     const [isLangOpen, setIsLangOpen] = useState(false);
+    const [isDataOpen, setIsDataOpen] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null });
     const [editSession, setEditSession] = useState(null);
 
@@ -218,6 +246,64 @@
 
     const handleApplySession = (row) => { if (!editSession) return; updateLogRowBatch(activeUser.id, row, { date: editSession.date, time: editSession.time }); setEditSession(null); };
     
+    // EXPORT PDF
+    const exportPDF = async () => {
+        if (!window.jspdf) { alert(t.libError); return; }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const sortedTrainees = [...trainees].sort((a,b) => a.name.localeCompare(b.name));
+
+        for (let i = 0; i < sortedTrainees.length; i++) {
+            const tr = sortedTrainees[i];
+            const userLogs = logs.filter(l => l.traineeId === tr.id).sort((a,b) => (b.cycle - a.cycle) || (a.row - b.row));
+            
+            if (i > 0) doc.addPage();
+            
+            doc.setFontSize(18);
+            doc.text(tr.name, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Total Sessions: ${tr.total} | Current Cycle: ${tr.cycle}`, 14, 22);
+            
+            if (userLogs.length === 0) {
+                doc.text("No records found.", 14, 30);
+                continue;
+            }
+
+            const tableBody = userLogs.map(l => [
+                l.cycle,
+                l.row,
+                l.date ? (l.date + "\n" + (l.time || "")) : "",
+                "", // Trainer Sig placeholder
+                "", // Member Sig placeholder
+                l.completedAt || ""
+            ]);
+
+            doc.autoTable({
+                startY: 25,
+                head: [['Cycle', '#', 'Date/Time', 'Coach', 'Member', 'Timestamp']],
+                body: tableBody,
+                rowPageBreak: 'avoid',
+                bodyStyles: { minCellHeight: 15, valign: 'middle' },
+                didDrawCell: function(data) {
+                    if (data.section === 'body' && (data.column.index === 3 || data.column.index === 4)) {
+                         const logIndex = data.row.index;
+                         const log = userLogs[logIndex];
+                         const imgData = data.column.index === 3 ? log.trainerSig : log.memberSig;
+                         if (imgData) {
+                             try {
+                                 doc.addImage(imgData, 'PNG', data.cell.x + 2, data.cell.y + 2, 10, 10);
+                             } catch(e) { console.error('Sig Error', e); }
+                         }
+                    }
+                }
+            });
+        }
+        
+        doc.save(`FitCheck_Records_${new Date().toISOString().split('T')[0]}.pdf`);
+        setIsDataOpen(false);
+    };
+
     return e('div', { className: 'flex flex-col lg:flex-row h-screen w-screen overflow-hidden ' + (isDark ? 'text-white' : 'text-slate-900') },
       e('nav', { className: 'hidden lg:flex w-64 flex-col gap-6 p-6 border-r shrink-0 ' + (isDark ? 'border-white/5 bg-slate-900/50' : 'border-slate-200 bg-white') },
         e('div', { className: "flex items-center gap-3" }, e('div', { className: "p-2 bg-indigo-600 rounded-xl shadow-lg" }, e(Icon, { name: "Activity", className: "text-white w-5 h-5" })), e('h1', { className: "text-lg font-black uppercase tracking-tighter" }, "FitCheck Pro")),
@@ -227,6 +313,7 @@
           )
         ),
         e('div', { className: "mt-auto flex flex-col gap-2" },
+          e('button', { onClick: () => setIsDataOpen(true), className: "flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase transition-all active:scale-95" }, t.data, e(Icon, { name: "Database", className: "w-3.5 h-3.5 opacity-50" })),
           e('button', { onClick: () => setTheme(isDark ? 'light' : 'dark'), className: "flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase transition-all active:scale-95" }, t.theme, e(Icon, { name: isDark ? "Moon" : "Sun", className: "w-3.5 h-3.5 opacity-50" })),
           e('button', { onClick: () => setIsLangOpen(true), className: "flex items-center justify-between p-3 rounded-lg border text-[9px] font-black uppercase transition-all active:scale-95" }, t.lang, e('span', { className: "opacity-50" }, t.langName))
         )
@@ -234,6 +321,7 @@
       e('header', { className: 'lg:hidden mobile-header-pad flex justify-between items-center px-4 border-b shrink-0 ' + (isDark ? 'bg-slate-950 border-white/5' : 'bg-white border-slate-200') + ' backdrop-blur-xl' },
         e('h1', { className: "font-black uppercase text-lg" }, "FitCheck"),
         e('div', { className: "flex gap-2" },
+          e('button', { onClick: () => setIsDataOpen(true), className: "p-2" }, e(Icon, { name: "Database", className: "w-5 h-5 opacity-60" })),
           e('button', { onClick: () => setTheme(isDark ? 'light' : 'dark'), className: "p-2" }, e(Icon, { name: isDark ? "Moon" : "Sun", className: "w-5 h-5 opacity-60" })),
           e('button', { onClick: () => setIsLangOpen(true), className: "p-2 text-[10px] font-black uppercase" }, lang.toUpperCase())
         )
@@ -291,7 +379,7 @@
                               e('button', { onClick: () => setEditSession(null), className: 'w-full py-2 text-[10px] font-black uppercase opacity-40' }, t.cancel)
                             )
                           )
-                        ) : e('button', { onClick: () => setEditSession({ row: row.row, date: row.date || new Date().toISOString().split('T')[0], time: row.time || "10:00" }), className: 'w-full text-left p-3 rounded-xl text-[11px] font-black transition-colors ' + (isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200') }, row.date ? formatSessionDisplay(row.date, row.time) : t.placeholder)
+                        ) : e('button', { onClick: () => setEditSession({ row: row.row, date: row.date || new Date().toISOString().split('T')[0], time: row.time || "10:00" }), className: 'w-full text-left p-3 rounded-xl transition-colors ' + (isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200') }, row.date ? e(SessionDisplay, { date: row.date, time: row.time }) : e('span', { className: "text-[11px] font-black" }, t.placeholder))
                       ),
                       e('td', { className: "text-center cursor-pointer", onClick: () => setSigModal({ isOpen: true, type: 'trainerSig', rowIndex: row.row }) }, row.trainerSig ? e('img', { src: row.trainerSig, className: 'h-10 mx-auto object-contain ' + (isDark ? 'invert opacity-90' : '') }) : e(Icon, { name: "PenTool", className: "w-5 h-5 mx-auto opacity-20" })),
                       e('td', { className: "text-center cursor-pointer", onClick: () => setSigModal({ isOpen: true, type: 'memberSig', rowIndex: row.row }) }, row.memberSig ? e('img', { src: row.memberSig, className: 'h-10 mx-auto object-contain ' + (isDark ? 'invert opacity-90' : '') }) : e(Icon, { name: "Pen", className: "w-5 h-5 mx-auto opacity-20" })),
@@ -339,10 +427,10 @@
                         e('tbody', null, logs.filter(l => l.traineeId === historyUser.id && l.completed && l.cycle === cycleNum).sort((a, b) => a.row - b.row).map(l => 
                           e('tr', { key: l.id, className: 'border-t ' + (isDark ? 'border-white/5' : 'border-slate-100') },
                             e('td', { className: "text-center opacity-40 text-[11px] font-black" }, l.row),
-                            e('td', { className: "p-4 font-black text-[11px] truncate" }, formatSessionDisplay(l.date, l.time)),
+                            e('td', { className: "p-4 font-black truncate" }, e(SessionDisplay, { date: l.date, time: l.time })),
                             e('td', { className: "text-center" }, l.trainerSig ? e('img', { src: l.trainerSig, className: 'h-10 w-auto mx-auto object-contain ' + (isDark ? 'invert' : '') }) : "--"),
                             e('td', { className: "text-center" }, l.memberSig ? e('img', { src: l.memberSig, className: 'h-10 w-auto mx-auto object-contain ' + (isDark ? 'invert' : '') }) : "--"),
-                            e('td', { className: "text-right text-[9px] font-bold text-emerald-500 truncate px-2" }, l.completedAt),
+                            e('td', { className: "text-right truncate px-2" }, e(TimestampDisplay, { timestamp: l.completedAt })),
                             e('td', { className: "text-center" }, e('button', { onClick: () => setConfirmModal({ isOpen: true, type: 'log', targetId: l.id }), className: "text-rose-500 p-2 bg-rose-500/5 rounded hover:bg-rose-500/10 active:scale-90" }, e(Icon, { name: "Trash2", className: "w-5 h-5" })))
                           )
                         ))
@@ -426,6 +514,16 @@
             Object.keys(translations).map(k => e('button', { key: k, onClick: () => { setLang(k); setIsLangOpen(false); }, className: 'p-4 rounded-xl font-black text-left flex justify-between items-center text-[11px] transition-all ' + (lang === k ? 'bg-indigo-600 text-white' : (isDark ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-50 text-slate-600')) }, translations[k].langName, lang === k && e(Icon, { name: "CheckCircle", className: "w-4 h-4" })))
           ),
           e('button', { onClick: () => setIsLangOpen(false), className: "w-full mt-4 text-[11px] opacity-40 uppercase font-black tracking-widest" }, t.cancel)
+        )
+      ),
+
+      isDataOpen && e('div', { className: "fixed inset-0 z-[700] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md" },
+        e('div', { className: 'w-full max-w-xs p-8 rounded-[2rem] border ' + (isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 shadow-2xl') },
+          e('h3', { className: "font-black uppercase mb-6 text-center text-sm" }, t.data),
+          e('div', { className: "flex flex-col gap-4" }, 
+            e('button', { onClick: exportPDF, className: "w-full py-4 bg-rose-500 text-white rounded-xl font-black uppercase text-[12px] active:scale-95 shadow-lg flex items-center justify-center gap-2" }, e(Icon, { name: "FileText", className: "w-4 h-4" }), t.exportPdf)
+          ),
+          e('button', { onClick: () => setIsDataOpen(false), className: "w-full mt-6 text-[11px] opacity-40 uppercase font-black tracking-widest" }, t.cancel)
         )
       )
     );
